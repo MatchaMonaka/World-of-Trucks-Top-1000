@@ -59,11 +59,11 @@
     const diff = Date.now() - ts;
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}分前`;
+    if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}時間前`;
+    if (hrs < 24) return `${hrs}h ago`;
     const days = Math.floor(hrs / 24);
-    return `${days}日前`;
+    return `${days}d ago`;
   }
 
   function flagImg(row) {
@@ -76,7 +76,7 @@
   }
 
   async function loadLeaderboard() {
-    boardBody.innerHTML = `<tr><td colspan="11" class="loading">読み込み中...</td></tr>`;
+    boardBody.innerHTML = `<tr><td colspan="11" class="loading">Loading...</td></tr>`;
     try {
       const res = await fetch('/api/leaderboard');
       const data = await res.json();
@@ -84,7 +84,7 @@
       render();
       hideStatus();
     } catch (err) {
-      boardBody.innerHTML = `<tr><td colspan="11" class="empty">読み込みに失敗しました。</td></tr>`;
+      boardBody.innerHTML = `<tr><td colspan="11" class="empty">Failed to load leaderboard data.</td></tr>`;
     }
   }
 
@@ -125,13 +125,13 @@
   function nextRefreshLabel(row) {
     const remain = REFRESH_COOLDOWN_MS - (Date.now() - row.last_updated);
     const hrs = Math.ceil(remain / 3600000);
-    return `あと約${hrs}時間`;
+    return `In ~${hrs}h`;
   }
 
   function render() {
     const rows = sortedPlayers();
     if (rows.length === 0) {
-      boardBody.innerHTML = `<tr><td colspan="11" class="empty">まだプレーヤーが登録されていません。上のフォームからWorld of Trucksのプロフィール番号を登録してください。</td></tr>`;
+      boardBody.innerHTML = `<tr><td colspan="11" class="empty">No players registered yet. Register a World of Trucks Profile ID using the form above.</td></tr>`;
       updateSortHeaders();
       return;
     }
@@ -150,10 +150,10 @@
           <td>${fmtTime(m.time_min)}</td>
           <td>${fmtDistance1dp(m.avg_distance_km)}</td>
           <td>${fmtSpeed(m.avg_speed_kmh)}</td>
-          <td title="${new Date(row.last_updated).toLocaleString()}">${fmtAgo(row.last_updated)}</td>
+          <td title="${new Date(row.last_updated).toLocaleString('en-US')}">${fmtAgo(row.last_updated)}</td>
           <td>
             <button class="update-btn" data-refresh="${row.id}" ${refreshable ? '' : 'disabled title="' + nextRefreshLabel(row) + '"'}>
-              ⟳ ${refreshable ? '更新' : nextRefreshLabel(row)}
+              ⟳ ${refreshable ? 'Refresh' : nextRefreshLabel(row)}
             </button>
           </td>
         </tr>`;
@@ -215,12 +215,12 @@
     const input = document.getElementById('newPlayerId');
     const id = Number(input.value);
     if (!id || id <= 0) {
-      showStatus('有効なプロフィールIDを入力してください。', 'error');
+      showStatus('Please enter a valid Profile ID.', 'error');
       return;
     }
     const btn = document.getElementById('addPlayerBtn');
     btn.disabled = true;
-    showStatus(`ID ${id} を取得中...`);
+    showStatus(`Fetching Profile ID ${id}...`);
     try {
       const res = await fetch('/api/players', {
         method: 'POST',
@@ -229,14 +229,14 @@
       });
       const data = await res.json();
       if (!res.ok) {
-        showStatus(data.error || '登録に失敗しました。', 'error');
+        showStatus(data.error || 'Failed to register player.', 'error');
       } else {
-        showStatus(`${data.name} を登録しました。上位1000位以内であればランキングに反映されます。`, 'success');
+        showStatus(`Registered ${data.name}. They will appear on the leaderboard if ranked in the top 1,000.`, 'success');
         input.value = '';
         await loadLeaderboard();
       }
     } catch (err) {
-      showStatus('通信エラーが発生しました。', 'error');
+      showStatus('A network error occurred.', 'error');
     } finally {
       btn.disabled = false;
     }
@@ -248,20 +248,20 @@
     const id = btn.dataset.refresh;
     btn.disabled = true;
     const originalText = btn.textContent;
-    btn.textContent = '⟳ 更新中...';
+    btn.textContent = '⟳ Updating...';
     try {
       const res = await fetch(`/api/players/${id}/refresh`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
-        showStatus(data.error || '更新に失敗しました。', 'error');
+        showStatus(data.error || 'Failed to update stats.', 'error');
         btn.disabled = false;
         btn.textContent = originalText;
       } else {
-        showStatus(`${data.name} の統計を更新しました。`, 'success');
+        showStatus(`Updated stats for ${data.name}.`, 'success');
         await loadLeaderboard();
       }
     } catch (err) {
-      showStatus('通信エラーが発生しました。', 'error');
+      showStatus('A network error occurred.', 'error');
       btn.disabled = false;
       btn.textContent = originalText;
     }
