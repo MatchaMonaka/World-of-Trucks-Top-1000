@@ -5,8 +5,9 @@
   let players = [];          // raw data from /api/leaderboard (fixed global-distance order + rank)
   let mode = 'global';       // global | euro | american
   let unit = 'km';           // km | mi
-  let sortKey = 'rank';
-  let sortDir = 'asc';
+  let sortKey = 'distance_km';
+  let sortDir = 'desc';
+
 
   const boardBody = document.getElementById('boardBody');
   const statusMsg = document.getElementById('statusMsg');
