@@ -108,7 +108,7 @@ router.post('/players', async (req, res) => {
     if (elapsed < NEW_PLAYER_COOLDOWN_MS) {
       const waitMs = NEW_PLAYER_COOLDOWN_MS - elapsed;
       return res.status(429).json({
-        error: 'New-player registration is limited to once every 5 minutes (site-friendliness limit). Please try again shortly.',
+        error: 'New-player registration is limited to once every minute (site-friendliness limit). Please try again shortly.',
         retry_after_ms: waitMs,
       });
     }
