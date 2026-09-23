@@ -7,6 +7,8 @@
   let unit = 'km';           // km | mi
   let sortKey = 'distance';
   let sortDir = 'desc';
+  let pageSize = 100;        // 100 | 200 | 250 | 500 | 1000
+  let searchQuery = '';      // matches against player name / country name / country code
 
 
   const boardBody = document.getElementById('boardBody');
@@ -119,6 +121,26 @@
     return copy;
   }
 
+  function matchesSearch(row) {
+    if (!searchQuery) return true;
+    const q = searchQuery;
+    const name = (row.name || '').toLowerCase();
+    const countryName = (row.country_name || '').toLowerCase();
+    const countryCode = (row.country_code || '').toLowerCase();
+    return name.includes(q) || countryName.includes(q) || countryCode.includes(q);
+  }
+
+  function visibleRows() {
+    const filtered = sortedPlayers().filter(matchesSearch);
+    const resultCount = document.getElementById('resultCount');
+    if (resultCount) {
+      resultCount.textContent = filtered.length
+        ? `Showing ${Math.min(pageSize, filtered.length)} of ${filtered.length}`
+        : '';
+    }
+    return filtered.slice(0, pageSize);
+  }
+
   function canRefreshNow(row) {
     return Date.now() - row.last_updated >= REFRESH_COOLDOWN_MS;
   }
@@ -130,9 +152,12 @@
   }
 
   function render() {
-    const rows = sortedPlayers();
+    const rows = visibleRows();
     if (rows.length === 0) {
-      boardBody.innerHTML = `<tr><td colspan="11" class="empty">No players registered yet. Register a World of Trucks Profile ID using the form above.</td></tr>`;
+      const msg = players.length === 0
+        ? 'No players registered yet. Register a World of Trucks Profile ID using the form above.'
+        : `No players match "${escapeHtml(searchQuery)}".`;
+      boardBody.innerHTML = `<tr><td colspan="11" class="empty">${msg}</td></tr>`;
       updateSortHeaders();
       return;
     }
@@ -208,6 +233,20 @@
       unit = btn.dataset.unit;
       render();
     });
+  });
+
+  document.querySelectorAll('.pagesize-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.pagesize-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      pageSize = Number(btn.dataset.size) || 100;
+      render();
+    });
+  });
+
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    searchQuery = e.target.value.trim().toLowerCase();
+    render();
   });
 
   document.getElementById('reloadBtn').addEventListener('click', loadLeaderboard);

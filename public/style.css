@@ -80,6 +80,29 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   width: 200px;
 }
 
+.search-group input {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: 6px;
+  width: 240px;
+}
+
+.result-count {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+.pagesize-btn.active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: #06231b;
+  font-weight: 600;
+}
+
 .status-msg {
   margin: 12px 24px 0;
   padding: 10px 14px;

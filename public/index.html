@@ -36,6 +36,23 @@
   </div>
 </section>
 
+<section class="controls">
+  <div class="control-group search-group">
+    <span class="control-label">Search:</span>
+    <input id="searchInput" type="text" placeholder="Player name or country...">
+    <span id="resultCount" class="result-count"></span>
+  </div>
+
+  <div class="control-group" role="group" aria-label="page size switch">
+    <span class="control-label">Show:</span>
+    <button class="pagesize-btn active" data-size="100">100</button>
+    <button class="pagesize-btn" data-size="200">200</button>
+    <button class="pagesize-btn" data-size="250">250</button>
+    <button class="pagesize-btn" data-size="500">500</button>
+    <button class="pagesize-btn" data-size="1000">1000</button>
+  </div>
+</section>
+
 <div id="statusMsg" class="status-msg" hidden></div>
 
 <div class="table-wrap">
