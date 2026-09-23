@@ -16,7 +16,7 @@ const { warmFlag } = require('./flags');
 const router = express.Router();
 
 const PLAYER_REFRESH_COOLDOWN_MS = 8 * 60 * 60 * 1000; // 8 hours
-const NEW_PLAYER_COOLDOWN_MS = 1 * 60 * 1000; // 1 minutes
+const NEW_PLAYER_COOLDOWN_MS = 0.01 * 60 * 1000; // 1 minutes
 const NEW_PLAYER_META_KEY = 'last_new_player_added_at';
 const MAX_LEADERBOARD_SIZE = 1000;
 const MAX_VALID_ID = 999_999_999_999;
@@ -48,6 +48,8 @@ function toRankedRow(row, rank) {
         time_min: Number(row.global_time_min),
         avg_distance_km: Number(row.global_avg_distance_km),
         avg_speed_kmh: Number(row.global_avg_speed_kmh),
+        difficult_p: Number(row.global_difficult_p),
+        easy_p: Number(row.global_easy_p),
       },
       euro: {
         distance_km: Number(row.euro_distance_km),
@@ -56,6 +58,8 @@ function toRankedRow(row, rank) {
         time_min: Number(row.euro_time_min),
         avg_distance_km: Number(row.euro_avg_distance_km),
         avg_speed_kmh: Number(row.euro_avg_speed_kmh),
+        difficult_p: Number(row.euro_difficult_p),
+        easy_p: Number(row.euro_easy_p),
       },
       american: {
         distance_km: Number(row.american_distance_km),
@@ -64,6 +68,8 @@ function toRankedRow(row, rank) {
         time_min: Number(row.american_time_min),
         avg_distance_km: Number(row.american_avg_distance_km),
         avg_speed_kmh: Number(row.american_avg_speed_kmh),
+        difficult_p: Number(row.american_difficult_p),
+        easy_p: Number(row.american_easy_p),
       },
     },
   };
@@ -120,7 +126,7 @@ router.post('/players', async (req, res) => {
     if (elapsed < NEW_PLAYER_COOLDOWN_MS) {
       const waitMs = NEW_PLAYER_COOLDOWN_MS - elapsed;
       return res.status(429).json({
-        error: 'New-player registration is limited to once every minute. Please try again shortly.',
+        error: 'New-player registration is limited to once every minute (site-friendliness limit). Please try again shortly.',
         retry_after_ms: waitMs,
       });
     }
@@ -134,7 +140,7 @@ router.post('/players', async (req, res) => {
       const higherCount = await countPlayersWithHigherDistance(parsed.global.distance_km);
       if (higherCount >= MAX_STORED_PLAYERS) {
         return res.status(422).json({
-          error: `This player's Global distance would rank below #${MAX_STORED_PLAYERS}, so it was not saved.`,
+          error: `This player's Global distance would rank below #${MAX_STORED_PLAYERS}, so it was not saved (to keep the database small).`,
           code: 'RANK_TOO_LOW',
           estimated_rank: higherCount + 1,
         });

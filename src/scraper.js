@@ -40,6 +40,8 @@ class ScrapeError extends Error {
  *     ./div[3]  Time on duty        -> same column layout
  *     ./div[4]  Total mass          -> same column layout
  *     ./div[7]  Total distance      -> same column layout
+ *     ./div[8]  Difficult P         -> same column layout
+ *     ./div[9]  Easy P              -> same column layout
  */
 async function fetchProfile(id) {
   const url = PROFILE_URL(id);
@@ -97,6 +99,8 @@ async function fetchProfile(id) {
   const timeRow = nth($, statsRoot, 'div', 3);
   const massRow = nth($, statsRoot, 'div', 4);
   const distRow = nth($, statsRoot, 'div', 7);
+  const difficultRow = nth($, statsRoot, 'div', 8);
+  const easyRow = nth($, statsRoot, 'div', 9);
 
   const cell = (row, n) => nth($, row, 'div', n).text().trim();
 
@@ -106,18 +110,24 @@ async function fetchProfile(id) {
       time: cell(timeRow, 4),
       mass: cell(massRow, 4),
       dist: cell(distRow, 4),
+      difficult: cell(difficultRow, 4),
+      easy: cell(easyRow, 4),
     },
     euro: {
       jobs: cell(jobsRow, 2),
       time: cell(timeRow, 2),
       mass: cell(massRow, 2),
       dist: cell(distRow, 2),
+      difficult: cell(difficultRow, 2),
+      easy: cell(easyRow, 2),
     },
     american: {
       jobs: cell(jobsRow, 3),
       time: cell(timeRow, 3),
       mass: cell(massRow, 3),
       dist: cell(distRow, 3),
+      difficult: cell(difficultRow, 3),
+      easy: cell(easyRow, 3),
     },
   };
 
@@ -126,10 +136,12 @@ async function fetchProfile(id) {
     const jobs = parseIntSafe(m.jobs);
     const mass_t = parseMassToTonnes(m.mass);
     const time_min = parseTimeToMinutes(m.time);
+    const difficult_p = parseIntSafe(m.difficult);
+    const easy_p = parseIntSafe(m.easy);
     const avg_distance_km = jobs > 0 ? Math.round((distance_km / jobs) * 10) / 10 : 0;
     const avg_speed_kmh =
       time_min > 0 ? Math.round((distance_km / (time_min / 60)) * 10) / 10 : 0;
-    return { distance_km, jobs, mass_t, time_min, avg_distance_km, avg_speed_kmh };
+    return { distance_km, jobs, mass_t, time_min, avg_distance_km, avg_speed_kmh, difficult_p, easy_p };
   }
 
   const parsed = {

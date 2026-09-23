@@ -100,7 +100,7 @@
   }
 
   async function loadLeaderboard() {
-    boardBody.innerHTML = `<tr><td colspan="11" class="loading">Loading...</td></tr>`;
+    boardBody.innerHTML = `<tr><td colspan="13" class="loading">Loading...</td></tr>`;
     try {
       const res = await fetch('/api/leaderboard');
       const data = await res.json();
@@ -109,7 +109,7 @@
       render();
       hideStatus();
     } catch (err) {
-      boardBody.innerHTML = `<tr><td colspan="11" class="empty">Failed to load leaderboard data.</td></tr>`;
+      boardBody.innerHTML = `<tr><td colspan="13" class="empty">Failed to load leaderboard data.</td></tr>`;
     }
   }
 
@@ -125,6 +125,8 @@
       case 'time': return m.time_min;
       case 'avgDistance': return m.avg_distance_km;
       case 'avgSpeed': return m.avg_speed_kmh;
+      case 'difficultP': return m.difficult_p;
+      case 'easyP': return m.easy_p;
       case 'lastUpdated': return row.last_updated;
       default: return 0;
     }
@@ -215,7 +217,7 @@
       const msg = players.length === 0
         ? 'No players registered yet. Register a World of Trucks Profile ID using the form above.'
         : `No players match "${escapeHtml(searchQuery)}".`;
-      boardBody.innerHTML = `<tr><td colspan="11" class="empty">${msg}</td></tr>`;
+      boardBody.innerHTML = `<tr><td colspan="13" class="empty">${msg}</td></tr>`;
       updateSortHeaders();
       return;
     }
@@ -234,6 +236,8 @@
           <td class="num">${fmtTime(m.time_min)}</td>
           <td class="num">${fmtDistance1dp(m.avg_distance_km)}</td>
           <td class="num">${fmtSpeed(m.avg_speed_kmh)}</td>
+          <td class="num">${fmtInt(m.difficult_p)}</td>
+          <td class="num">${fmtInt(m.easy_p)}</td>
           <td class="num" title="${new Date(row.last_updated).toLocaleString('en-US')}">${fmtAgo(row.last_updated)}</td>
           <td>
             <button class="update-btn" data-refresh="${row.id}" ${refreshable ? '' : 'disabled title="' + nextRefreshLabel(row) + '"'}>

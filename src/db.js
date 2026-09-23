@@ -49,16 +49,16 @@ async function upsertPlayer(parsed) {
   const query = `
     INSERT INTO players (
       id, name, country_code, country_name,
-      global_distance_km, global_jobs, global_mass_t, global_time_min, global_avg_distance_km, global_avg_speed_kmh,
-      euro_distance_km, euro_jobs, euro_mass_t, euro_time_min, euro_avg_distance_km, euro_avg_speed_kmh,
-      american_distance_km, american_jobs, american_mass_t, american_time_min, american_avg_distance_km, american_avg_speed_kmh,
+      global_distance_km, global_jobs, global_mass_t, global_time_min, global_avg_distance_km, global_avg_speed_kmh, global_difficult_p, global_easy_p,
+      euro_distance_km, euro_jobs, euro_mass_t, euro_time_min, euro_avg_distance_km, euro_avg_speed_kmh, euro_difficult_p, euro_easy_p,
+      american_distance_km, american_jobs, american_mass_t, american_time_min, american_avg_distance_km, american_avg_speed_kmh, american_difficult_p, american_easy_p,
       created_at, last_updated
     ) VALUES (
       $1, $2, $3, $4,
-      $5, $6, $7, $8, $9, $10,
-      $11, $12, $13, $14, $15, $16,
-      $17, $18, $19, $20, $21, $22,
-      $23, $24
+      $5, $6, $7, $8, $9, $10, $11, $12,
+      $13, $14, $15, $16, $17, $18, $19, $20,
+      $21, $22, $23, $24, $25, $26, $27, $28,
+      $29, $30
     )
     ON CONFLICT (id) DO UPDATE SET
       name = EXCLUDED.name,
@@ -70,18 +70,24 @@ async function upsertPlayer(parsed) {
       global_time_min = EXCLUDED.global_time_min,
       global_avg_distance_km = EXCLUDED.global_avg_distance_km,
       global_avg_speed_kmh = EXCLUDED.global_avg_speed_kmh,
+      global_difficult_p = EXCLUDED.global_difficult_p,
+      global_easy_p = EXCLUDED.global_easy_p,
       euro_distance_km = EXCLUDED.euro_distance_km,
       euro_jobs = EXCLUDED.euro_jobs,
       euro_mass_t = EXCLUDED.euro_mass_t,
       euro_time_min = EXCLUDED.euro_time_min,
       euro_avg_distance_km = EXCLUDED.euro_avg_distance_km,
       euro_avg_speed_kmh = EXCLUDED.euro_avg_speed_kmh,
+      euro_difficult_p = EXCLUDED.euro_difficult_p,
+      euro_easy_p = EXCLUDED.euro_easy_p,
       american_distance_km = EXCLUDED.american_distance_km,
       american_jobs = EXCLUDED.american_jobs,
       american_mass_t = EXCLUDED.american_mass_t,
       american_time_min = EXCLUDED.american_time_min,
       american_avg_distance_km = EXCLUDED.american_avg_distance_km,
       american_avg_speed_kmh = EXCLUDED.american_avg_speed_kmh,
+      american_difficult_p = EXCLUDED.american_difficult_p,
+      american_easy_p = EXCLUDED.american_easy_p,
       last_updated = EXCLUDED.last_updated;
   `;
 
@@ -96,18 +102,24 @@ async function upsertPlayer(parsed) {
     parsed.global.time_min,
     parsed.global.avg_distance_km,
     parsed.global.avg_speed_kmh,
+    parsed.global.difficult_p,
+    parsed.global.easy_p,
     parsed.euro.distance_km,
     parsed.euro.jobs,
     parsed.euro.mass_t,
     parsed.euro.time_min,
     parsed.euro.avg_distance_km,
     parsed.euro.avg_speed_kmh,
+    parsed.euro.difficult_p,
+    parsed.euro.easy_p,
     parsed.american.distance_km,
     parsed.american.jobs,
     parsed.american.mass_t,
     parsed.american.time_min,
     parsed.american.avg_distance_km,
     parsed.american.avg_speed_kmh,
+    parsed.american.difficult_p,
+    parsed.american.easy_p,
     createdAt,
     now,
   ];
