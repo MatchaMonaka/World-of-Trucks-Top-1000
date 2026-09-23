@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>World of Trucks Leaderboard - Top 1000</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>🚚 World of Trucks Leaderboard <span class="badge">Top 1000</span></h1>
+  <p class="sub">Top 1,000 truckers by <strong>Global Total Distance</strong></p>
+</header>
+
+<section class="controls">
+  <div class="control-group" role="group" aria-label="mode switch">
+    <span class="control-label">Mode:</span>
+    <button class="mode-btn active" data-mode="global">🌍 Global</button>
+    <button class="mode-btn" data-mode="euro">🇪🇺 Euro</button>
+    <button class="mode-btn" data-mode="american">🇺🇸 American</button>
+  </div>
+
+  <div class="control-group">
+    <span class="control-label">Distance Unit:</span>
+    <button class="unit-btn active" data-unit="km">km</button>
+    <button class="unit-btn" data-unit="mi">mi</button>
+  </div>
+
+  <div class="control-group add-player">
+    <input id="newPlayerId" type="number" min="1" placeholder="World of Trucks Profile ID">
+    <button id="addPlayerBtn">+ Register New Player</button>
+  </div>
+
+  <div class="control-group">
+    <button id="reloadBtn" title="Reload leaderboard from database">⟳ Refresh Display</button>
+  </div>
+</section>
+
+<div id="statusMsg" class="status-msg" hidden></div>
+
+<div class="table-wrap">
+<table id="board">
+  <thead>
+    <tr>
+      <th data-key="rank" class="sortable">#</th>
+      <th data-key="country" class="sortable">Country</th>
+      <th data-key="name" class="sortable">Player Name</th>
+      <th data-key="distance" class="sortable">Total Distance</th>
+      <th data-key="jobs" class="sortable">Total Jobs</th>
+      <th data-key="mass" class="sortable">Total Mass</th>
+      <th data-key="time" class="sortable">Time on Duty</th>
+      <th data-key="avgDistance" class="sortable">Avg Distance</th>
+      <th data-key="avgSpeed" class="sortable">Avg Speed</th>
+      <th data-key="lastUpdated" class="sortable">Last Updated</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody id="boardBody">
+    <tr><td colspan="11" class="loading">Loading...</td></tr>
+  </tbody>
+</table>
+</div>
+
+<footer>
+  <p>Data Source: <a href="https://www.worldoftrucks.com/" target="_blank" rel="noopener">World of Trucks</a> (SCS Software). This site is an unofficial fan-made tool created with claude.ai</p>
+  <p>To reduce server load, updating an existing player profile is limited to once every 8 hours, and registering a new player is limited to once every 5 minutes.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
