@@ -8,7 +8,7 @@ const { warmFlag } = require('./flags');
 const router = express.Router();
 
 const PLAYER_REFRESH_COOLDOWN_MS = 8 * 60 * 60 * 1000; // 8 hours
-const NEW_PLAYER_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const NEW_PLAYER_COOLDOWN_MS = 1 * 60 * 1000; // 1 minutes
 const NEW_PLAYER_META_KEY = 'last_new_player_added_at';
 const MAX_LEADERBOARD_SIZE = 1000;
 const MAX_VALID_ID = 999_999_999_999;
