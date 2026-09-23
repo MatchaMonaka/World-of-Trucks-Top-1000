@@ -51,7 +51,7 @@
   function fmtDistance(km) {
     if (!km) return '-';
     const val = unit === 'mi' ? km / KM_PER_MILE : km;
-    return `${val.toLocaleString('en-US', { maximumFractionDigits: 0 })} ${unit}`;
+    return `${val.toLocaleString('en-US', { maximumFractionDigits: 1 })} ${unit}`;
   }
 
   function fmtDistance1dp(km) {
