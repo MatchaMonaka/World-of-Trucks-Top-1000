@@ -191,25 +191,10 @@
     });
   }
 
-  /**
-   * Builds a windowed list of page-number buttons: always shows the first
-   * and last page, the pages immediately around the current one, and
-   * collapses the rest behind an ellipsis so this stays compact even with
-   * many pages.
-   */
   function pageNumberButtonsHtml(totalPages) {
-    const current = currentPage; // 0-indexed
-    const pages = new Set([0, totalPages - 1, current, current - 1, current + 1]);
-    const sorted = [...pages].filter((p) => p >= 0 && p < totalPages).sort((a, b) => a - b);
-
     let html = '';
-    let prev = null;
-    for (const p of sorted) {
-      if (prev !== null && p - prev > 1) {
-        html += `<span class="page-ellipsis">…</span>`;
-      }
-      html += `<button class="page-num ${p === current ? 'active' : ''}" data-page="${p}">${p + 1}</button>`;
-      prev = p;
+    for (let p = 0; p < totalPages; p++) {
+      html += `<button class="page-num ${p === currentPage ? 'active' : ''}" data-page="${p}">${p + 1}</button>`;
     }
     return html;
   }

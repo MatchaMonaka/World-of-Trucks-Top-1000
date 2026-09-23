@@ -130,12 +130,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   font-weight: 600;
 }
 
-.page-ellipsis {
-  color: var(--text-dim);
-  padding: 0 2px;
-  font-size: 0.82rem;
-}
-
 .page-nav {
   font-size: 0.82rem;
 }
