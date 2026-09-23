@@ -142,7 +142,7 @@
       const refreshable = canRefreshNow(row);
       return `
         <tr data-id="${row.id}">
-          <td class="rank">${row.rank}</td>
+          <td class="rank num">${row.rank}</td>
           <td class="flag">${flagImg(row)}</td>
           <td class="name"><a href="https://www.worldoftrucks.com/en/profile/${row.id}" target="_blank" rel="noopener">${escapeHtml(row.name)}</a></td>
           <td class="num">${fmtDistance(m.distance_km)}</td>
