@@ -16,7 +16,7 @@ const { warmFlag } = require('./flags');
 const router = express.Router();
 
 const PLAYER_REFRESH_COOLDOWN_MS = 8 * 60 * 60 * 1000; // 8 hours
-const NEW_PLAYER_COOLDOWN_MS = 0.01 * 60 * 1000; // 1 minutes
+const NEW_PLAYER_COOLDOWN_MS = 1 * 60 * 1000; // 1 minutes
 const NEW_PLAYER_META_KEY = 'last_new_player_added_at';
 const MAX_LEADERBOARD_SIZE = 1000;
 const MAX_VALID_ID = 999_999_999_999;
@@ -120,7 +120,7 @@ router.post('/players', async (req, res) => {
     if (elapsed < NEW_PLAYER_COOLDOWN_MS) {
       const waitMs = NEW_PLAYER_COOLDOWN_MS - elapsed;
       return res.status(429).json({
-        error: 'New-player registration is limited to once every minute (site-friendliness limit). Please try again shortly.',
+        error: 'New-player registration is limited to once every minute. Please try again shortly.',
         retry_after_ms: waitMs,
       });
     }
@@ -134,7 +134,7 @@ router.post('/players', async (req, res) => {
       const higherCount = await countPlayersWithHigherDistance(parsed.global.distance_km);
       if (higherCount >= MAX_STORED_PLAYERS) {
         return res.status(422).json({
-          error: `This player's Global distance would rank below #${MAX_STORED_PLAYERS}, so it was not saved (to keep the database small).`,
+          error: `This player's Global distance would rank below #${MAX_STORED_PLAYERS}, so it was not saved.`,
           code: 'RANK_TOO_LOW',
           estimated_rank: higherCount + 1,
         });
