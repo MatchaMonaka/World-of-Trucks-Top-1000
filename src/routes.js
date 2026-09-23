@@ -2,7 +2,15 @@
 
 const express = require('express');
 const { fetchProfile, ScrapeError } = require('./scraper');
-const { getPlayer, upsertPlayer, getLeaderboard, getMeta, setMeta } = require('./db');
+const {
+  getPlayer,
+  upsertPlayer,
+  getLeaderboard,
+  getMeta,
+  setMeta,
+  countPlayersWithHigherDistance,
+  pruneToTopN,
+} = require('./db');
 const { warmFlag } = require('./flags');
 
 const router = express.Router();
@@ -12,6 +20,10 @@ const NEW_PLAYER_COOLDOWN_MS = 0.01 * 60 * 1000; // 1 minutes
 const NEW_PLAYER_META_KEY = 'last_new_player_added_at';
 const MAX_LEADERBOARD_SIZE = 1000;
 const MAX_VALID_ID = 999_999_999_999;
+
+// Players ranking below this (by Global distance) are not worth storing:
+// keeps the table small even if people spam low-rank profile IDs.
+const MAX_STORED_PLAYERS = 1100;
 
 function isValidId(id) {
   return Number.isInteger(id) && id > 0 && id <= MAX_VALID_ID;
@@ -118,7 +130,18 @@ router.post('/players', async (req, res) => {
     try {
       const parsed = await fetchProfile(id);
       await setMeta(NEW_PLAYER_META_KEY, now);
+
+      const higherCount = await countPlayersWithHigherDistance(parsed.global.distance_km);
+      if (higherCount >= MAX_STORED_PLAYERS) {
+        return res.status(422).json({
+          error: `This player's Global distance would rank below #${MAX_STORED_PLAYERS}, so it was not saved (to keep the database small).`,
+          code: 'RANK_TOO_LOW',
+          estimated_rank: higherCount + 1,
+        });
+      }
+
       const row = await upsertPlayer(parsed);
+      await pruneToTopN(MAX_STORED_PLAYERS);
       warmFlag(row.country_code);
       return res.status(201).json(toRankedRow(row, null));
     } catch (err) {
@@ -167,6 +190,15 @@ router.post('/players/:id/refresh', async (req, res) => {
     try {
       const parsed = await fetchProfile(id);
       const row = await upsertPlayer(parsed);
+      await pruneToTopN(MAX_STORED_PLAYERS);
+      const stillStored = await getPlayer(id);
+      if (!stillStored) {
+        return res.status(200).json({
+          message: `Stats were refreshed, but this player now ranks below #${MAX_STORED_PLAYERS} and was removed from the database.`,
+          code: 'RANK_TOO_LOW',
+          id,
+        });
+      }
       warmFlag(row.country_code);
       return res.json(toRankedRow(row, null));
     } catch (err) {

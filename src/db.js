@@ -130,6 +130,35 @@ async function getLeaderboard(limit = 1000) {
   return res.rows;
 }
 
+/**
+ * Number of stored players whose global_distance_km is strictly greater
+ * than the given value. Used to estimate a new player's rank before we
+ * decide whether it's worth storing them at all.
+ */
+async function countPlayersWithHigherDistance(distanceKm) {
+  const res = await pool.query(
+    'SELECT COUNT(*)::int AS count FROM players WHERE global_distance_km > $1',
+    [distanceKm]
+  );
+  return res.rows[0].count;
+}
+
+/**
+ * Keeps only the top `limit` players ranked by global_distance_km (descending)
+ * and deletes the rest. This bounds table size regardless of how many
+ * low-ranked profile IDs get submitted.
+ */
+async function pruneToTopN(limit) {
+  const res = await pool.query(
+    `DELETE FROM players
+     WHERE id NOT IN (
+       SELECT id FROM players ORDER BY global_distance_km DESC LIMIT $1
+     )`,
+    [limit]
+  );
+  return res.rowCount;
+}
+
 module.exports = {
   pool,
   getMeta,
@@ -137,4 +166,6 @@ module.exports = {
   getPlayer,
   upsertPlayer,
   getLeaderboard,
+  countPlayersWithHigherDistance,
+  pruneToTopN,
 };

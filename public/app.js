@@ -336,6 +336,9 @@
         showStatus(data.error || 'Failed to update stats.', 'error');
         btn.disabled = false;
         btn.textContent = originalText;
+      } else if (data.code === 'RANK_TOO_LOW') {
+        showStatus(data.message, 'error');
+        await loadLeaderboard();
       } else {
         showStatus(`Updated stats for ${data.name}.`, 'success');
         await loadLeaderboard();
