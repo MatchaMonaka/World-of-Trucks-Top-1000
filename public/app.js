@@ -1,6 +1,19 @@
 (() => {
   const KM_PER_MILE = 1.609344;
   const REFRESH_COOLDOWN_MS = 8 * 60 * 60 * 1000;
+  const COOKIE_MAX_AGE_DAYS = 365;
+  const ALLOWED_PAGE_SIZES = [100, 200, 250, 500, 1000];
+
+  function setCookie(name, value) {
+    const maxAge = COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
+    document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${maxAge}; path=/; SameSite=Lax`;
+  }
+
+  function getCookie(name) {
+    const escaped = name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1');
+    const match = document.cookie.match(new RegExp('(?:^|; )' + escaped + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+  }
 
   let players = [];          // raw data from /api/leaderboard (fixed global-distance order + rank)
   let mode = 'global';       // global | euro | american
@@ -10,6 +23,13 @@
   let pageSize = 100;        // 100 | 200 | 250 | 500 | 1000
   let searchQuery = '';      // matches against player name / country name / country code
   let currentPage = 0;       // 0-indexed
+
+  // Restore persisted preferences (Distance Unit / page size) from cookies.
+  const savedUnit = getCookie('wot_unit');
+  if (savedUnit === 'km' || savedUnit === 'mi') unit = savedUnit;
+
+  const savedPageSize = Number(getCookie('wot_pageSize'));
+  if (ALLOWED_PAGE_SIZES.includes(savedPageSize)) pageSize = savedPageSize;
 
 
   const boardBody = document.getElementById('boardBody');
@@ -253,6 +273,7 @@
       document.querySelectorAll('.unit-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       unit = btn.dataset.unit;
+      setCookie('wot_unit', unit);
       render();
     });
   });
@@ -263,6 +284,7 @@
       btn.classList.add('active');
       pageSize = Number(btn.dataset.size) || 100;
       currentPage = 0;
+      setCookie('wot_pageSize', pageSize);
       render();
     });
   });
@@ -348,6 +370,14 @@
       btn.disabled = false;
       btn.textContent = originalText;
     }
+  });
+
+  // Reflect restored preferences (from cookies) on the toggle buttons themselves.
+  document.querySelectorAll('.unit-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.unit === unit);
+  });
+  document.querySelectorAll('.pagesize-btn').forEach((b) => {
+    b.classList.toggle('active', Number(b.dataset.size) === pageSize);
   });
 
   loadLeaderboard();
