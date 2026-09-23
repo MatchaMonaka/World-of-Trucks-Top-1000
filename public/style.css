@@ -111,6 +111,31 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   font-size: 0.82rem;
 }
 
+.page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.page-num {
+  min-width: 34px;
+  padding: 6px 8px;
+  font-size: 0.82rem;
+}
+
+.page-num.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1200;
+  font-weight: 600;
+}
+
+.page-ellipsis {
+  color: var(--text-dim);
+  padding: 0 2px;
+  font-size: 0.82rem;
+}
+
 .page-nav {
   font-size: 0.82rem;
 }

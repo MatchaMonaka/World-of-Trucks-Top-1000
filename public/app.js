@@ -172,15 +172,46 @@
   }
 
   function renderPagination(totalPages, totalCount) {
-    const html = totalCount === 0 ? '' : `
+    if (totalCount === 0) {
+      ['paginationTop', 'paginationBottom'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '';
+      });
+      return;
+    }
+
+    const html = `
       <button class="page-nav" data-page="prev" ${currentPage === 0 ? 'disabled' : ''}>‹ Prev</button>
-      <span class="page-indicator">Page ${currentPage + 1} of ${totalPages}</span>
+      <div class="page-numbers">${pageNumberButtonsHtml(totalPages)}</div>
       <button class="page-nav" data-page="next" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>Next ›</button>
     `;
     ['paginationTop', 'paginationBottom'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = html;
     });
+  }
+
+  /**
+   * Builds a windowed list of page-number buttons: always shows the first
+   * and last page, the pages immediately around the current one, and
+   * collapses the rest behind an ellipsis so this stays compact even with
+   * many pages.
+   */
+  function pageNumberButtonsHtml(totalPages) {
+    const current = currentPage; // 0-indexed
+    const pages = new Set([0, totalPages - 1, current, current - 1, current + 1]);
+    const sorted = [...pages].filter((p) => p >= 0 && p < totalPages).sort((a, b) => a - b);
+
+    let html = '';
+    let prev = null;
+    for (const p of sorted) {
+      if (prev !== null && p - prev > 1) {
+        html += `<span class="page-ellipsis">…</span>`;
+      }
+      html += `<button class="page-num ${p === current ? 'active' : ''}" data-page="${p}">${p + 1}</button>`;
+      prev = p;
+    }
+    return html;
   }
 
   function canRefreshNow(row) {
@@ -255,6 +286,7 @@
         sortKey = key;
         sortDir = key === 'rank' ? 'asc' : 'desc';
       }
+      currentPage = 0;
       render();
     });
   });
@@ -302,7 +334,8 @@
       const btn = e.target.closest('[data-page]');
       if (!btn || btn.disabled) return;
       if (btn.dataset.page === 'prev') currentPage -= 1;
-      if (btn.dataset.page === 'next') currentPage += 1;
+      else if (btn.dataset.page === 'next') currentPage += 1;
+      else currentPage = Number(btn.dataset.page);
       render();
       // Keep the top of the table in view when paging from the bottom control.
       if (id === 'paginationBottom') {
