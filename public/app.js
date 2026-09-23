@@ -231,13 +231,13 @@
           <td class="flag region-col">${flagImg(row)}</td>
           <td class="name"><a href="https://www.worldoftrucks.com/en/profile/${row.id}" target="_blank" rel="noopener">${escapeHtml(row.name)}</a></td>
           <td class="num">${fmtDistance(m.distance_km)}</td>
-          <td class="num">${fmtInt(m.jobs)}</td>
           <td class="num">${fmtMass(m.mass_t)}</td>
           <td class="num">${fmtTime(m.time_min)}</td>
           <td class="num">${fmtDistance1dp(m.avg_distance_km)}</td>
           <td class="num">${fmtSpeed(m.avg_speed_kmh)}</td>
           <td class="num">${fmtInt(m.difficult_p)}</td>
           <td class="num">${fmtInt(m.easy_p)}</td>
+          <td class="num">${fmtInt(m.jobs)}</td>
           <td class="num" title="${new Date(row.last_updated).toLocaleString('en-US')}">${fmtAgo(row.last_updated)}</td>
           <td>
             <button class="update-btn" data-refresh="${row.id}" ${refreshable ? '' : 'disabled title="' + nextRefreshLabel(row) + '"'}>
