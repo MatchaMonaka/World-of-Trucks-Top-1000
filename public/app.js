@@ -51,13 +51,13 @@
   function fmtDistance(km) {
     if (!km) return '-';
     const val = unit === 'mi' ? km / KM_PER_MILE : km;
-    return `${val.toLocaleString('en-US', { maximumFractionDigits: 1 })} ${unit}`;
+    return `${val.toLocaleString('en-US', { maximumFractionDigits: 0 })} ${unit}`;
   }
 
   function fmtDistance1dp(km) {
     if (!km) return '-';
     const val = unit === 'mi' ? km / KM_PER_MILE : km;
-    return `${val.toLocaleString('en-US', { maximumFractionDigits: 1 })} ${unit}`;
+    return `${val.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${unit}`;
   }
 
   function fmtSpeed(kmh) {
