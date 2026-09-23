@@ -148,3 +148,13 @@ footer {
   line-height: 1.6;
 }
 footer a { color: var(--accent-2); }
+
+th.num,
+td.num {
+  text-align: right;
+}
+
+th.num.sort-asc::after,
+th.num.sort-desc::after {
+  margin-left: 2px;
+}
