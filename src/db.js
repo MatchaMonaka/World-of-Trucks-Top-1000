@@ -4,7 +4,10 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  family: 4
 });
 
 // 接続確認テスト
