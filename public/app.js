@@ -9,6 +9,7 @@
   let sortDir = 'desc';
   let pageSize = 100;        // 100 | 200 | 250 | 500 | 1000
   let searchQuery = '';      // matches against player name / country name / country code
+  let currentPage = 0;       // 0-indexed
 
 
   const boardBody = document.getElementById('boardBody');
@@ -84,6 +85,7 @@
       const res = await fetch('/api/leaderboard');
       const data = await res.json();
       players = data.players || [];
+      currentPage = 0;
       render();
       hideStatus();
     } catch (err) {
@@ -132,13 +134,33 @@
 
   function visibleRows() {
     const filtered = sortedPlayers().filter(matchesSearch);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if (currentPage > totalPages - 1) currentPage = totalPages - 1;
+    if (currentPage < 0) currentPage = 0;
+
+    const start = currentPage * pageSize;
+    const pageRows = filtered.slice(start, start + pageSize);
+
     const resultCount = document.getElementById('resultCount');
     if (resultCount) {
       resultCount.textContent = filtered.length
-        ? `Showing ${Math.min(pageSize, filtered.length)} of ${filtered.length}`
+        ? `Showing ${start + 1}-${start + pageRows.length} of ${filtered.length}`
         : '';
     }
-    return filtered.slice(0, pageSize);
+    renderPagination(totalPages, filtered.length);
+    return pageRows;
+  }
+
+  function renderPagination(totalPages, totalCount) {
+    const html = totalCount === 0 ? '' : `
+      <button class="page-nav" data-page="prev" ${currentPage === 0 ? 'disabled' : ''}>‹ Prev</button>
+      <span class="page-indicator">Page ${currentPage + 1} of ${totalPages}</span>
+      <button class="page-nav" data-page="next" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>Next ›</button>
+    `;
+    ['paginationTop', 'paginationBottom'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    });
   }
 
   function canRefreshNow(row) {
@@ -240,13 +262,31 @@
       document.querySelectorAll('.pagesize-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       pageSize = Number(btn.dataset.size) || 100;
+      currentPage = 0;
       render();
     });
   });
 
   document.getElementById('searchInput').addEventListener('input', (e) => {
     searchQuery = e.target.value.trim().toLowerCase();
+    currentPage = 0;
     render();
+  });
+
+  ['paginationTop', 'paginationBottom'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-page]');
+      if (!btn || btn.disabled) return;
+      if (btn.dataset.page === 'prev') currentPage -= 1;
+      if (btn.dataset.page === 'next') currentPage += 1;
+      render();
+      // Keep the top of the table in view when paging from the bottom control.
+      if (id === 'paginationBottom') {
+        document.getElementById('board').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
   });
 
   document.getElementById('reloadBtn').addEventListener('click', loadLeaderboard);

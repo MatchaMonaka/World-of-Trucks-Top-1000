@@ -96,6 +96,25 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   white-space: nowrap;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 14px 24px;
+}
+
+.pagination:empty { margin: 0; }
+
+.page-indicator {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+.page-nav {
+  font-size: 0.82rem;
+}
+
 .pagesize-btn.active {
   background: var(--accent-2);
   border-color: var(--accent-2);
