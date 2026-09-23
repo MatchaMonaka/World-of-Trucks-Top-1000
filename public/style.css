@@ -188,7 +188,7 @@ tbody td {
 tbody tr:hover { background: #16201f; }
 
 td.rank { font-weight: 700; color: var(--accent); }
-td.name a { font-weight: 600; color: var(--accent); }
+td.name a { font-weight: 600; color: var(--accent); text-decoration: none; }
 td.flag img { width: 20px; height: 20px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
 
 th.region-col,
