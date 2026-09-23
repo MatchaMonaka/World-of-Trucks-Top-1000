@@ -145,13 +145,13 @@
           <td class="rank">${row.rank}</td>
           <td class="flag">${flagImg(row)}</td>
           <td class="name"><a href="https://www.worldoftrucks.com/en/profile/${row.id}" target="_blank" rel="noopener">${escapeHtml(row.name)}</a></td>
-          <td>${fmtDistance(m.distance_km)}</td>
-          <td>${fmtInt(m.jobs)}</td>
-          <td>${fmtMass(m.mass_t)}</td>
-          <td>${fmtTime(m.time_min)}</td>
-          <td>${fmtDistance1dp(m.avg_distance_km)}</td>
-          <td>${fmtSpeed(m.avg_speed_kmh)}</td>
-          <td title="${new Date(row.last_updated).toLocaleString('en-US')}">${fmtAgo(row.last_updated)}</td>
+          <td class="num">${fmtDistance(m.distance_km)}</td>
+          <td class="num">${fmtInt(m.jobs)}</td>
+          <td class="num">${fmtMass(m.mass_t)}</td>
+          <td class="num">${fmtTime(m.time_min)}</td>
+          <td class="num">${fmtDistance1dp(m.avg_distance_km)}</td>
+          <td class="num">${fmtSpeed(m.avg_speed_kmh)}</td>
+          <td class="num" title="${new Date(row.last_updated).toLocaleString('en-US')}">${fmtAgo(row.last_updated)}</td>
           <td>
             <button class="update-btn" data-refresh="${row.id}" ${refreshable ? '' : 'disabled title="' + nextRefreshLabel(row) + '"'}>
               ⟳ ${refreshable ? 'Refresh' : nextRefreshLabel(row)}
