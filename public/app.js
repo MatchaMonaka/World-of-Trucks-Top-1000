@@ -39,7 +39,7 @@
   function fmtSpeed(kmh) {
     if (!kmh) return '-';
     const val = unit === 'mi' ? kmh / KM_PER_MILE : kmh;
-    return `${val.toLocaleString('en-US', { maximumFractionDigits: 1 })} ${unit}/h`;
+    return `${val.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${unit}/h`;
   }
 
   function fmtMass(t) {
