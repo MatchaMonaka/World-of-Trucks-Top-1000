@@ -35,7 +35,10 @@ class ScrapeError extends Error {
  * DOM map (as supplied / verified against the live page structure):
  *   /html/body/div[1]/div/div[2]/h2/a[1]            -> player name
  *   /html/body/div[1]/div/div[2]/h2/a[2]/img[@src]  -> country flag ("/img/flags/xxx.png")
- *   /html/body/div[1]/div/div[7]                    -> "Full Statistics" block
+ *   //div[contains(@class,"job-stats-detail")]       -> "Full Statistics" block
+ *     (located via its stable `.job-stats-detail` class, not position -
+ *     the positional index of this div can shift, e.g. when events are
+ *     injected earlier in the page)
  *     ./div[2]  Jobs accomplished   -> ./div[2]=Euro ./div[3]=American ./div[4]=Global
  *     ./div[3]  Time on duty        -> same column layout
  *     ./div[4]  Total mass          -> same column layout
@@ -94,7 +97,15 @@ async function fetchProfile(id) {
   }
 
   // ---- Full Statistics block ----
-  const statsRoot = nth($, div1_div, 'div', 7);
+  // Located by its stable `.job-stats-detail` class rather than a
+  // positional div[7] index, since the index can shift underneath us.
+  const statsRoot = div1_div.find('div.job-stats-detail').first();
+  if (statsRoot.length === 0) {
+    throw new ScrapeError(
+      `Could not locate ".job-stats-detail" block for id ${id} - page layout may have changed`,
+      'PARSE_FAILED'
+    );
+  }
   const jobsRow = nth($, statsRoot, 'div', 2);
   const timeRow = nth($, statsRoot, 'div', 3);
   const massRow = nth($, statsRoot, 'div', 4);
