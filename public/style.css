@@ -251,6 +251,9 @@ td.rank .rank-main {
   min-width: 3ch;
   text-align: right;
 }
+td.rank .rank-main.rank-wide {
+  min-width: 8ch;   /* "12/345" (Region) and "+12.34%" (Avg Speed) */
+}
 td.rank .rank-main.rank-na {
   color: var(--text-dim);
   font-size: 0.78rem;
@@ -264,4 +267,13 @@ td.rank .rank-orig {
   font-size: 0.68rem;
   font-weight: 400;
   color: var(--text-dim);
+}
+
+/* Sorting notes in the footer */
+footer .notes-title { margin-bottom: 2px; }
+footer .sort-notes {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.7rem;
+  line-height: 1.6;
 }

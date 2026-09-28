@@ -86,6 +86,14 @@
 <footer>
   <p>Data Source: <a href="https://www.worldoftrucks.com/" target="_blank" rel="noopener">World of Trucks</a> (SCS Software). This site is an unofficial fan-made tool created with Claude and Gemini</p>
   <p id="limitsNote"></p>
+  <p class="notes-title">About the # column when sorting:</p>
+  <ul class="sort-notes">
+    <li>By default, # is the rank by Global Total Distance. When sorted by another column, # is the rank within that column for the selected mode (1 = highest, ties share a rank), and the original Global rank is shown small on its left.</li>
+    <li>Name / Last Updated: ranked by Total Distance of the selected mode.</li>
+    <li>Region: shown as "rank / players in that region", ranked by Total Distance within the region.</li>
+    <li>Avg Speed: shown as the difference from the median Avg Speed (players with data in the selected mode), sorted by the absolute difference. Hover over the value to see the median.</li>
+    <li>Players with no data for the selected mode / column are shown as N/A. Ranks are calculated over all registered players, not just search results.</li>
+  </ul>
 </footer>
 
 <script src="app.js"></script>

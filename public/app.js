@@ -172,6 +172,26 @@
     }
   }
 
+  // ---- Avg Speed: deviation from the median ----
+  // Median of Avg Speed (km/h) over all players that have data in the current mode.
+  let speedMedian = 0;
+
+  function updateSpeedMedian() {
+    const vals = players
+      .map((r) => r.modes[mode].avg_speed_kmh)
+      .filter((v) => v > 0)
+      .sort((a, b) => a - b);
+    if (!vals.length) { speedMedian = 0; return; }
+    const mid = Math.floor(vals.length / 2);
+    speedMedian = vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+  }
+
+  // Signed difference from the median in percent, or null when there is no data.
+  function speedDiffPct(kmh) {
+    if (!kmh || !speedMedian) return null;
+    return ((kmh - speedMedian) / speedMedian) * 100;
+  }
+
   function getSortValue(row, key) {
     const m = row.modes[mode];
     switch (key) {
@@ -183,7 +203,11 @@
       case 'mass': return m.mass_t;
       case 'time': return m.time_min;
       case 'avgDistance': return m.avg_distance_km;
-      case 'avgSpeed': return m.avg_speed_kmh;
+      case 'avgSpeed': {
+        // Sorted by |difference from median|; null = no data (always placed last)
+        const d = speedDiffPct(m.avg_speed_kmh);
+        return d === null ? null : Math.abs(d);
+      }
       case 'difficultP': return m.difficult_p;
       case 'easyP': return m.easy_p;
       case 'lastUpdated': return row.last_updated;
@@ -192,10 +216,15 @@
   }
 
   function sortedPlayers() {
+    updateSpeedMedian();
     const copy = [...players];
     copy.sort((a, b) => {
       const va = getSortValue(a, sortKey);
       const vb = getSortValue(b, sortKey);
+      if (va === null || vb === null) {
+        if (va === vb) return 0;
+        return va === null ? 1 : -1;   // no-data rows go last regardless of direction
+      }
       let cmp;
       if (typeof va === 'string') cmp = va.localeCompare(vb);
       else cmp = va - vb;
@@ -279,7 +308,7 @@
   const DASH_KEYS = new Set(['distance', 'mass', 'time', 'avgDistance', 'avgSpeed']);
 
   /**
-   * Returns { showOrig, ranks }.
+   * Returns { showOrig, ranks, sizes }.
    *  - showOrig=false: just show row.rank (original Global Total Distance rank), as before.
    *  - showOrig=true : `ranks` maps player id -> rank (or null = N/A) within the current
    *    sort key / mode (/ region when sorting by Region); the original rank is shown small.
@@ -290,9 +319,12 @@
     const isRegion = sortKey === 'country';
     const valueKey = (isRegion || NON_RANKABLE_KEYS.has(sortKey)) ? 'distance' : sortKey;
     const showOrig = !(mode === 'global' && valueKey === 'distance' && !isRegion);
-    if (!showOrig) return { showOrig: false, ranks: null };
+    if (!showOrig) return { showOrig: false, ranks: null, sizes: null };
+    // Avg Speed: the main cell shows the % difference from the median, not a rank.
+    if (sortKey === 'avgSpeed') return { showOrig: true, ranks: null, sizes: null };
 
     const ranks = new Map();
+    const sizes = new Map();   // groupId -> number of ranked players (Region sort only)
     const groups = new Map();
     for (const row of players) {
       const m = row.modes[mode];
@@ -307,7 +339,8 @@
       if (!groups.has(groupId)) groups.set(groupId, []);
       groups.get(groupId).push({ id: row.id, v });
     }
-    groups.forEach((arr) => {
+    groups.forEach((arr, groupId) => {
+      sizes.set(groupId, arr.length);
       arr.sort((x, y) => y.v - x.v);
       let prevV = null;
       let prevRank = 0;
@@ -318,16 +351,34 @@
         prevRank = r;
       });
     });
-    return { showOrig: true, ranks };
+    return { showOrig: true, ranks, sizes: isRegion ? sizes : null };
   }
 
-  function rankCellHtml(row, showOrig, ranks) {
+  function rankCellHtml(row, showOrig, ranks, sizes) {
     if (!showOrig) return String(row.rank);
-    const r = ranks.get(row.id);
-    const main = r == null
-      ? '<span class="rank-main rank-na">N/A</span>'
-      : `<span class="rank-main">${r}</span>`;
     const orig = `<span class="rank-orig" title="Original rank (Global Total Distance)">#${row.rank}</span>`;
+    const na = '<span class="rank-main rank-na">N/A</span>';
+    let main;
+    if (sortKey === 'avgSpeed') {
+      const d = speedDiffPct(row.modes[mode].avg_speed_kmh);
+      if (d === null) {
+        main = na;
+      } else {
+        const r = Math.round(d * 100) / 100;
+        const txt = `${r < 0 ? '-' : '+'}${Math.abs(r).toFixed(2)}%`;
+        main = `<span class="rank-main rank-wide" title="Median: ${fmtSpeed(speedMedian)}">${txt}</span>`;
+      }
+    } else {
+      const r = ranks.get(row.id);
+      if (r == null) {
+        main = na;
+      } else if (sizes) {
+        const size = sizes.get(row.country_code || '');
+        main = `<span class="rank-main rank-wide">${r}/${size}</span>`;
+      } else {
+        main = `<span class="rank-main">${r}</span>`;
+      }
+    }
     return `${orig}${main}`;
   }
 
@@ -351,14 +402,14 @@
       return;
     }
 
-    const { showOrig, ranks } = computeDisplayRanks();
+    const { showOrig, ranks, sizes } = computeDisplayRanks();
 
     boardBody.innerHTML = rows.map((row) => {
       const m = row.modes[mode];
       const refreshable = canRefreshNow(row);
       return `
         <tr data-id="${row.id}">
-          <td class="rank num">${rankCellHtml(row, showOrig, ranks)}</td>
+          <td class="rank num">${rankCellHtml(row, showOrig, ranks, sizes)}</td>
           <td class="flag region-col">${flagImg(row)}</td>
           <td class="name"><a href="https://www.worldoftrucks.com/en/profile/${row.id}" target="_blank" rel="noopener">${escapeHtml(row.name)}</a></td>
           <td class="num">${fmtDistance(m.distance_km)}</td>
