@@ -327,7 +327,8 @@
     const main = r == null
       ? '<span class="rank-main rank-na">N/A</span>'
       : `<span class="rank-main">${r}</span>`;
-    return `${main}<span class="rank-orig" title="Original rank (Global Total Distance)">#${row.rank}</span>`;
+    const orig = `<span class="rank-orig" title="Original rank (Global Total Distance)">#${row.rank}</span>`;
+    return `${orig}${main}`;
   }
 
   function canRefreshNow(row) {
