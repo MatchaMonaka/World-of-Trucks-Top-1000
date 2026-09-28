@@ -254,13 +254,16 @@
     const vKey = rankValueKey();
     const keys = effectiveSortKeys();
     const hasRegion = keys[0].key === 'country';
+    // N/A ranks sit below the lowest rank: at the bottom for descending order,
+    // and at the very top (above the lowest ranked player) for ascending order.
+    const rankKeyEntry = sortKeys.find((s) => s.key === vKey);
+    const naFirst = Boolean(rankKeyEntry && rankKeyEntry.dir === 'asc');
     const restKeys = hasRegion ? keys.slice(1) : keys;
     copy.sort((a, b) => {
-      // 1) rows that would show "N/A" always go below the lowest rank
-      //    (never hidden; listed after every ranked row, in both directions)
+      // 1) rows that would show "N/A" are ranked below the lowest rank (never hidden)
       const naA = isNaRow(a, vKey);
       const naB = isNaRow(b, vKey);
-      if (naA !== naB) return naA ? 1 : -1;
+      if (naA !== naB) return (naA ? 1 : -1) * (naFirst ? -1 : 1);
       // 2) region grouping (if any)
       if (hasRegion) {
         const c = compareByKey(a, b, keys[0]);
@@ -308,6 +311,22 @@
         : '';
     }
     renderPagination(totalPages, filtered.length);
+
+    // N/A rows are listed below the lowest rank, so they usually sit on a later page.
+    // Show how many there are and offer a jump to the first one.
+    const naBtn = document.getElementById('naJumpBtn');
+    if (naBtn) {
+      const vKey = rankValueKey();
+      const firstNa = filtered.findIndex((r) => isNaRow(r, vKey));
+      if (firstNa === -1) {
+        naBtn.hidden = true;
+      } else {
+        const naCount = filtered.length - firstNa;
+        naBtn.hidden = false;
+        naBtn.dataset.page = String(Math.floor(firstNa / pageSize));
+        naBtn.textContent = `↓ N/A: ${fmtInt(naCount)} (page ${Math.floor(firstNa / pageSize) + 1})`;
+      }
+    }
     return pageRows;
   }
 
@@ -531,6 +550,12 @@
       currentPage = 0;
       render();
     });
+  });
+
+  document.getElementById('naJumpBtn').addEventListener('click', (e) => {
+    currentPage = Number(e.currentTarget.dataset.page) || 0;
+    render();
+    document.getElementById('board').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   document.getElementById('resetSortBtn').addEventListener('click', () => {
