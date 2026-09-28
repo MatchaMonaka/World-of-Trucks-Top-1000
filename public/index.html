@@ -68,6 +68,7 @@
       <th data-key="time" class="sortable num">Time on Duty</th>
       <th data-key="avgDistance" class="sortable num">Avg Distance</th>
       <th data-key="avgSpeed" class="sortable num">Avg Speed</th>
+      <th data-key="avgSpeedDiff" class="sortable num" title="Difference from the median Avg Speed (linked to Avg Speed)">Speed vs Median</th>
       <th data-key="difficultP" class="sortable num">Difficult P</th>
       <th data-key="easyP" class="sortable num">Easy P</th>
       <th data-key="jobs" class="sortable num">Total Jobs</th>
@@ -76,7 +77,7 @@
     </tr>
   </thead>
   <tbody id="boardBody">
-    <tr><td colspan="13" class="loading">Loading...</td></tr>
+    <tr><td colspan="14" class="loading">Loading...</td></tr>
   </tbody>
 </table>
 </div>
@@ -89,10 +90,10 @@
   <p class="notes-title">About the # column when sorting:</p>
   <ul class="sort-notes">
     <li>By default, # is the rank by Global Total Distance. When sorted by another column, # is the rank within that column for the selected mode (1 = highest, ties share a rank), and the original Global rank is shown small on its left.</li>
-    <li>Name / Last Updated: ranked by Total Distance of the selected mode.</li>
+    <li>Name / Last Updated / Avg Speed / Speed vs Median: # is the Total Distance rank of the selected mode.</li>
     <li>Region: shown as "rank / players in that region", ranked by Total Distance within the region.</li>
-    <li>Avg Speed: shown as the difference from the median Avg Speed (players with data in the selected mode), sorted by the absolute difference. Hover over the value to see the median.</li>
-    <li>Players with no data for the selected mode / column are shown as N/A. Ranks are calculated over all registered players, not just search results.</li>
+    <li>Avg Speed / Speed vs Median: these two headers are linked. Both sort by the absolute difference from the median Avg Speed (players with data in the selected mode), ascending (closest to the median first) by default. Hover over a Speed vs Median value to see the median.</li>
+    <li>Players with no data for the selected mode / column are shown as N/A and always listed below the lowest rank, regardless of sort direction. Ranks are calculated over all registered players, not just search results.</li>
   </ul>
 </footer>
 

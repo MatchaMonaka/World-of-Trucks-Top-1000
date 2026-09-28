@@ -71,6 +71,14 @@
     return `${val.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${unit}/h`;
   }
 
+  // Signed difference from the median Avg Speed, e.g. "+3.21%" / "-12.50%".
+  function fmtSpeedDiff(kmh) {
+    const d = speedDiffPct(kmh);
+    if (d === null) return '-';
+    const r = Math.round(d * 100) / 100;
+    return `${r < 0 ? '-' : '+'}${Math.abs(r).toFixed(2)}%`;
+  }
+
   function fmtMass(t) {
     if (!t) return '-';
     return `${fmtInt(t)} t`;
@@ -157,7 +165,7 @@
   }
 
   async function loadLeaderboard() {
-    boardBody.innerHTML = `<tr><td colspan="13" class="loading">Loading...</td></tr>`;
+    boardBody.innerHTML = `<tr><td colspan="14" class="loading">Loading...</td></tr>`;
     try {
       const res = await fetch('/api/leaderboard');
       const data = await res.json();
@@ -168,7 +176,7 @@
       render();
       hideStatus();
     } catch (err) {
-      boardBody.innerHTML = `<tr><td colspan="13" class="empty">Failed to load leaderboard data.</td></tr>`;
+      boardBody.innerHTML = `<tr><td colspan="14" class="empty">Failed to load leaderboard data.</td></tr>`;
     }
   }
 
@@ -218,7 +226,15 @@
   function sortedPlayers() {
     updateSpeedMedian();
     const copy = [...players];
+    const vKey = rankValueKey();
     copy.sort((a, b) => {
+      // Rows that would show "N/A" always go below the lowest rank, in both directions.
+      const naA = isNaRow(a, vKey);
+      const naB = isNaRow(b, vKey);
+      if (naA || naB) {
+        if (naA === naB) return 0;
+        return naA ? 1 : -1;
+      }
       const va = getSortValue(a, sortKey);
       const vb = getSortValue(b, sortKey);
       if (va === null || vb === null) {
@@ -303,9 +319,29 @@
   // ---- displayed rank ----
   // Keys that have no "rank within the key": the displayed rank falls back to
   // Total Distance of the current mode (same as the original rank in GLOBAL mode).
-  const NON_RANKABLE_KEYS = new Set(['rank', 'name', 'lastUpdated']);
+  const NON_RANKABLE_KEYS = new Set(['rank', 'name', 'lastUpdated', 'avgSpeed']);
   // Keys whose cell shows "-" when the value is 0 (=> rank is N/A).
   const DASH_KEYS = new Set(['distance', 'mass', 'time', 'avgDistance', 'avgSpeed']);
+  const DASH_FIELDS = {
+    distance: 'distance_km',
+    mass: 'mass_t',
+    time: 'time_min',
+    avgDistance: 'avg_distance_km',
+    avgSpeed: 'avg_speed_kmh',
+  };
+
+  // The column whose values the displayed rank is based on.
+  function rankValueKey() {
+    return (sortKey === 'country' || NON_RANKABLE_KEYS.has(sortKey)) ? 'distance' : sortKey;
+  }
+
+  // True when the row's rank is "N/A" for the given value key in the current mode.
+  function isNaRow(row, valueKey) {
+    const m = row.modes[mode];
+    if (mode !== 'global' && !m.distance_km) return true;              // no ETS2/ATS data
+    const field = DASH_FIELDS[valueKey];
+    return Boolean(field) && !m[field];                                  // cell would show "-"
+  }
 
   /**
    * Returns { showOrig, ranks, sizes }.
@@ -317,21 +353,16 @@
    */
   function computeDisplayRanks() {
     const isRegion = sortKey === 'country';
-    const valueKey = (isRegion || NON_RANKABLE_KEYS.has(sortKey)) ? 'distance' : sortKey;
+    const valueKey = rankValueKey();
     const showOrig = !(mode === 'global' && valueKey === 'distance' && !isRegion);
     if (!showOrig) return { showOrig: false, ranks: null, sizes: null };
-    // Avg Speed: the main cell shows the % difference from the median, not a rank.
-    if (sortKey === 'avgSpeed') return { showOrig: true, ranks: null, sizes: null };
 
     const ranks = new Map();
     const sizes = new Map();   // groupId -> number of ranked players (Region sort only)
     const groups = new Map();
     for (const row of players) {
-      const m = row.modes[mode];
       const v = getSortValue(row, valueKey);
-      const noModeData = mode !== 'global' && !m.distance_km;   // no ETS2/ATS data ("-")
-      const isDash = DASH_KEYS.has(valueKey) && !v;             // cell would show "-"
-      if (noModeData || isDash) {
+      if (isNaRow(row, valueKey)) {
         ranks.set(row.id, null);
         continue;
       }
@@ -357,27 +388,15 @@
   function rankCellHtml(row, showOrig, ranks, sizes) {
     if (!showOrig) return String(row.rank);
     const orig = `<span class="rank-orig" title="Original rank (Global Total Distance)">#${row.rank}</span>`;
-    const na = '<span class="rank-main rank-na">N/A</span>';
+    const r = ranks.get(row.id);
     let main;
-    if (sortKey === 'avgSpeed') {
-      const d = speedDiffPct(row.modes[mode].avg_speed_kmh);
-      if (d === null) {
-        main = na;
-      } else {
-        const r = Math.round(d * 100) / 100;
-        const txt = `${r < 0 ? '-' : '+'}${Math.abs(r).toFixed(2)}%`;
-        main = `<span class="rank-main rank-wide" title="Median: ${fmtSpeed(speedMedian)}">${txt}</span>`;
-      }
+    if (r == null) {
+      main = '<span class="rank-main rank-na">N/A</span>';
+    } else if (sizes) {
+      const size = sizes.get(row.country_code || '');
+      main = `<span class="rank-main rank-wide">${r}/${size}</span>`;
     } else {
-      const r = ranks.get(row.id);
-      if (r == null) {
-        main = na;
-      } else if (sizes) {
-        const size = sizes.get(row.country_code || '');
-        main = `<span class="rank-main rank-wide">${r}/${size}</span>`;
-      } else {
-        main = `<span class="rank-main">${r}</span>`;
-      }
+      main = `<span class="rank-main">${r}</span>`;
     }
     return `${orig}${main}`;
   }
@@ -397,7 +416,7 @@
       const msg = players.length === 0
         ? 'No players registered yet. Register a World of Trucks Profile ID using the form above.'
         : `No players match "${escapeHtml(searchQuery)}".`;
-      boardBody.innerHTML = `<tr><td colspan="13" class="empty">${msg}</td></tr>`;
+      boardBody.innerHTML = `<tr><td colspan="14" class="empty">${msg}</td></tr>`;
       updateSortHeaders();
       return;
     }
@@ -417,6 +436,7 @@
           <td class="num">${fmtTime(m.time_min)}</td>
           <td class="num">${fmtDistance1dp(m.avg_distance_km)}</td>
           <td class="num">${fmtSpeed(m.avg_speed_kmh)}</td>
+          <td class="num"${m.avg_speed_kmh && speedMedian ? ` title="Median: ${fmtSpeed(speedMedian)}"` : ''}>${fmtSpeedDiff(m.avg_speed_kmh)}</td>
           <td class="num">${fmtInt(m.difficult_p)}</td>
           <td class="num">${fmtInt(m.easy_p)}</td>
           <td class="num">${fmtInt(m.jobs)}</td>
@@ -441,7 +461,8 @@
   function updateSortHeaders() {
     document.querySelectorAll('th.sortable').forEach((th) => {
       th.classList.remove('sort-asc', 'sort-desc');
-      if (th.dataset.key === sortKey) {
+      const key = th.dataset.key === 'avgSpeedDiff' ? 'avgSpeed' : th.dataset.key;
+      if (key === sortKey) {
         th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
       }
     });
@@ -450,12 +471,13 @@
   // ---- events ----
   document.querySelectorAll('th.sortable').forEach((th) => {
     th.addEventListener('click', () => {
-      const key = th.dataset.key;
+      // The "Speed vs Median" header is linked to "Avg Speed": both use the same sort key.
+      const key = th.dataset.key === 'avgSpeedDiff' ? 'avgSpeed' : th.dataset.key;
       if (sortKey === key) {
         sortDir = sortDir === 'asc' ? 'desc' : 'asc';
       } else {
         sortKey = key;
-        sortDir = key === 'rank' ? 'asc' : 'desc';
+        sortDir = (key === 'rank' || key === 'avgSpeed') ? 'asc' : 'desc';
       }
       currentPage = 0;
       render();

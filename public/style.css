@@ -159,7 +159,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   border-radius: 8px;
 }
 
-table { width: 100%; border-collapse: collapse; min-width: 1120px; }
+table { width: 100%; border-collapse: collapse; min-width: 1240px; }
 
 thead th {
   position: sticky;
@@ -252,7 +252,7 @@ td.rank .rank-main {
   text-align: right;
 }
 td.rank .rank-main.rank-wide {
-  min-width: 8ch;   /* "12/345" (Region) and "+12.34%" (Avg Speed) */
+  min-width: 8ch;   /* "12/345" (Region) */
 }
 td.rank .rank-main.rank-na {
   color: var(--text-dim);
