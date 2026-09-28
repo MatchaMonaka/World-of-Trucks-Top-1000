@@ -291,3 +291,4 @@ footer .sort-notes {
 }
 th.sort-asc[data-order]::after { content: " ▲" attr(data-order); }
 th.sort-desc[data-order]::after { content: " ▼" attr(data-order); }
+
