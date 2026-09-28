@@ -227,3 +227,13 @@ th.num.sort-asc::after,
 th.num.sort-desc::after {
   margin-left: 2px;
 }
+/* Hide the spin buttons on the Profile ID number input */
+#newPlayerId::-webkit-outer-spin-button,
+#newPlayerId::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+#newPlayerId {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
