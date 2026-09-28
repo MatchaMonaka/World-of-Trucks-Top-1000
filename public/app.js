@@ -256,17 +256,15 @@
     const hasRegion = keys[0].key === 'country';
     const restKeys = hasRegion ? keys.slice(1) : keys;
     copy.sort((a, b) => {
-      // 1) region grouping (if any)
+      // 1) rows that would show "N/A" always go below the lowest rank
+      //    (never hidden; listed after every ranked row, in both directions)
+      const naA = isNaRow(a, vKey);
+      const naB = isNaRow(b, vKey);
+      if (naA !== naB) return naA ? 1 : -1;
+      // 2) region grouping (if any)
       if (hasRegion) {
         const c = compareByKey(a, b, keys[0]);
         if (c !== 0) return c;
-      }
-      // 2) rows that would show "N/A" go below the lowest rank (inside their region)
-      const naA = isNaRow(a, vKey);
-      const naB = isNaRow(b, vKey);
-      if (naA || naB) {
-        if (naA === naB) return 0;
-        return naA ? 1 : -1;
       }
       // 3) remaining keys in priority order
       for (const k of restKeys) {
@@ -365,7 +363,7 @@
   // True when the row's rank is "N/A" for the given value key in the current mode.
   function isNaRow(row, valueKey) {
     const m = row.modes[mode];
-    if (mode !== 'global' && !m.distance_km) return true;              // no ETS2/ATS data
+    if (!m.distance_km) return true;                                   // no Total Distance => N/A
     const field = DASH_FIELDS[valueKey];
     return Boolean(field) && !m[field];                                  // cell would show "-"
   }
@@ -453,20 +451,21 @@
     boardBody.innerHTML = rows.map((row) => {
       const m = row.modes[mode];
       const refreshable = canRefreshNow(row);
+      const nd = !m.distance_km;   // no Total Distance in this mode => all values "-"
       return `
         <tr data-id="${row.id}">
           <td class="rank num">${rankCellHtml(row, showOrig, ranks, sizes)}</td>
           <td class="flag region-col">${flagImg(row)}</td>
           <td class="name"><a href="https://www.worldoftrucks.com/en/profile/${row.id}" target="_blank" rel="noopener">${escapeHtml(row.name)}</a></td>
           <td class="num">${fmtDistance(m.distance_km)}</td>
-          <td class="num">${fmtMass(m.mass_t)}</td>
-          <td class="num">${fmtTime(m.time_min)}</td>
-          <td class="num">${fmtDistance1dp(m.avg_distance_km)}</td>
-          <td class="num">${fmtSpeed(m.avg_speed_kmh)}</td>
-          <td class="num"${m.avg_speed_kmh && speedMedian ? ` title="Median: ${fmtSpeed(speedMedian)}"` : ''}>${fmtSpeedDiff(m.avg_speed_kmh)}</td>
-          <td class="num">${fmtInt(m.difficult_p)}</td>
-          <td class="num">${fmtInt(m.easy_p)}</td>
-          <td class="num">${fmtInt(m.jobs)}</td>
+          <td class="num">${nd ? '-' : fmtMass(m.mass_t)}</td>
+          <td class="num">${nd ? '-' : fmtTime(m.time_min)}</td>
+          <td class="num">${nd ? '-' : fmtDistance1dp(m.avg_distance_km)}</td>
+          <td class="num">${nd ? '-' : fmtSpeed(m.avg_speed_kmh)}</td>
+          <td class="num"${!nd && m.avg_speed_kmh && speedMedian ? ` title="Median: ${fmtSpeed(speedMedian)}"` : ''}>${nd ? '-' : fmtSpeedDiff(m.avg_speed_kmh)}</td>
+          <td class="num">${nd ? '-' : fmtInt(m.difficult_p)}</td>
+          <td class="num">${nd ? '-' : fmtInt(m.easy_p)}</td>
+          <td class="num">${nd ? '-' : fmtInt(m.jobs)}</td>
           <td class="num" title="${new Date(row.last_updated).toLocaleString('en-US')}">${fmtAgo(row.last_updated)}</td>
           <td>
             <button class="update-btn" data-refresh="${row.id}" ${refreshable ? '' : 'disabled title="' + nextRefreshLabel(row) + '"'}>
