@@ -113,10 +113,8 @@ router.post('/players', async (req, res) => {
   try {
     const existing = await getPlayer(id);
     if (existing) {
-      return res.status(409).json({
-        error: 'This player is already registered. Use the refresh action to update their stats instead.',
-        id,
-      });
+      // 既に登録済み → 更新可能なら自動で更新、まだなら残り時間を返す
+      return await refreshPlayer(res, id, existing, { viaRegister: true });
     }
 
     const now = Date.now();
@@ -160,7 +158,7 @@ router.post('/players', async (req, res) => {
   }
 });
 
-// POST /api/players/:id/refresh -> 各DB操作に await 追加
+// POST /api/players/:id/refresh
 router.post('/players/:id/refresh', async (req, res) => {
   const id = Number(req.params.id);
   if (!isValidId(id)) {
@@ -174,49 +172,60 @@ router.post('/players/:id/refresh', async (req, res) => {
         error: 'This player is not registered yet. Add them first.',
       });
     }
-
-    if (refreshInFlight.has(id)) {
-      return res.status(429).json({
-        error: 'A refresh for this player is already in progress.',
-      });
-    }
-
-    const now = Date.now();
-    const elapsed = now - Number(existing.last_updated);
-    if (elapsed < PLAYER_REFRESH_COOLDOWN_MS) {
-      const waitMs = PLAYER_REFRESH_COOLDOWN_MS - elapsed;
-      return res.status(429).json({
-        error: 'This player was updated recently. Each player can only be refreshed once every 8 hours.',
-        retry_after_ms: waitMs,
-        next_allowed_at: Number(existing.last_updated) + PLAYER_REFRESH_COOLDOWN_MS,
-      });
-    }
-
-    refreshInFlight.add(id);
-    try {
-      const parsed = await fetchProfile(id);
-      const row = await upsertPlayer(parsed);
-      await pruneToTopN(MAX_STORED_PLAYERS);
-      const stillStored = await getPlayer(id);
-      if (!stillStored) {
-        return res.status(200).json({
-          message: `Stats were refreshed, but this player now ranks below #${MAX_STORED_PLAYERS} and was removed from the database.`,
-          code: 'RANK_TOO_LOW',
-          id,
-        });
-      }
-      warmFlag(row.country_code);
-      return res.json(toRankedRow(row, null));
-    } catch (err) {
-      return handleScrapeError(res, err);
-    } finally {
-      refreshInFlight.delete(id);
-    }
+    return await refreshPlayer(res, id, existing);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Unexpected server error.' });
   }
 });
+
+/**
+ * 既存プレイヤーの更新処理(refresh エンドポイントと、登録時の自動更新で共用)
+ * - 更新中なら 429
+ * - クールダウン中なら 429(残り時間つき)
+ * - 更新可能ならスクレイピングして DB を更新
+ */
+async function refreshPlayer(res, id, existing, { viaRegister = false } = {}) {
+  if (refreshInFlight.has(id)) {
+    return res.status(429).json({
+      error: 'A refresh for this player is already in progress.',
+    });
+  }
+
+  const now = Date.now();
+  const elapsed = now - Number(existing.last_updated);
+  if (elapsed < PLAYER_REFRESH_COOLDOWN_MS) {
+    const waitMs = PLAYER_REFRESH_COOLDOWN_MS - elapsed;
+    const waitHrs = Math.ceil(waitMs / 3600000);
+    const prefix = viaRegister ? 'This player is already registered and ' : 'This player ';
+    return res.status(429).json({
+      error: `${prefix}was updated recently. Each player can only be refreshed once every 8 hours (available in ~${waitHrs}h).`,
+      retry_after_ms: waitMs,
+      next_allowed_at: Number(existing.last_updated) + PLAYER_REFRESH_COOLDOWN_MS,
+    });
+  }
+
+  refreshInFlight.add(id);
+  try {
+    const parsed = await fetchProfile(id);
+    const row = await upsertPlayer(parsed);
+    await pruneToTopN(MAX_STORED_PLAYERS);
+    const stillStored = await getPlayer(id);
+    if (!stillStored) {
+      return res.status(200).json({
+        message: `Stats were refreshed, but this player now ranks below #${MAX_STORED_PLAYERS} and was removed from the database.`,
+        code: 'RANK_TOO_LOW',
+        id,
+      });
+    }
+    warmFlag(row.country_code);
+    return res.json({ ...toRankedRow(row, null), refreshed: true });
+  } catch (err) {
+    return handleScrapeError(res, err);
+  } finally {
+    refreshInFlight.delete(id);
+  }
+}
 
 function handleScrapeError(res, err) {
   if (err instanceof ScrapeError) {

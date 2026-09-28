@@ -151,7 +151,13 @@
     const name = (row.name || '').toLowerCase();
     const countryName = (row.country_name || '').toLowerCase();
     const countryCode = (row.country_code || '').toLowerCase();
-    return name.includes(q) || countryName.includes(q) || countryCode.includes(q);
+    const playerId = String(row.id);
+    return (
+      name.includes(q) ||
+      countryName.includes(q) ||
+      countryCode.includes(q) ||
+      playerId.includes(q)
+    );
   }
 
   function visibleRows() {
@@ -354,6 +360,15 @@
       const data = await res.json();
       if (!res.ok) {
         showStatus(data.error || 'Failed to register player.', 'error');
+      } else if (data.code === 'RANK_TOO_LOW') {
+        // 既存プレイヤーを更新した結果、圏外になって削除されたケース
+        showStatus(data.message, 'error');
+        input.value = '';
+        await loadLeaderboard();
+      } else if (data.refreshed) {
+        showStatus(`${data.name} is already registered, so their stats were updated.`, 'success');
+        input.value = '';
+        await loadLeaderboard();
       } else {
         showStatus(`Registered ${data.name}. They will appear on the leaderboard if ranked in the top 1,000.`, 'success');
         input.value = '';
