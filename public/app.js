@@ -199,6 +199,11 @@
       let cmp;
       if (typeof va === 'string') cmp = va.localeCompare(vb);
       else cmp = va - vb;
+      // Region sort: inside each region, order by the current mode's Total Distance (desc),
+      // independent of the asc/desc direction of the region column itself.
+      if (cmp === 0 && sortKey === 'country') {
+        return b.modes[mode].distance_km - a.modes[mode].distance_km;
+      }
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return copy;
@@ -266,6 +271,65 @@
     return html;
   }
 
+  // ---- displayed rank ----
+  // Keys that have no "rank within the key": the displayed rank falls back to
+  // Total Distance of the current mode (same as the original rank in GLOBAL mode).
+  const NON_RANKABLE_KEYS = new Set(['rank', 'name', 'lastUpdated']);
+  // Keys whose cell shows "-" when the value is 0 (=> rank is N/A).
+  const DASH_KEYS = new Set(['distance', 'mass', 'time', 'avgDistance', 'avgSpeed']);
+
+  /**
+   * Returns { showOrig, ranks }.
+   *  - showOrig=false: just show row.rank (original Global Total Distance rank), as before.
+   *  - showOrig=true : `ranks` maps player id -> rank (or null = N/A) within the current
+   *    sort key / mode (/ region when sorting by Region); the original rank is shown small.
+   * Ranks are computed over ALL players (not just the search-filtered ones);
+   * 1 = highest value, ties share the same rank.
+   */
+  function computeDisplayRanks() {
+    const isRegion = sortKey === 'country';
+    const valueKey = (isRegion || NON_RANKABLE_KEYS.has(sortKey)) ? 'distance' : sortKey;
+    const showOrig = !(mode === 'global' && valueKey === 'distance' && !isRegion);
+    if (!showOrig) return { showOrig: false, ranks: null };
+
+    const ranks = new Map();
+    const groups = new Map();
+    for (const row of players) {
+      const m = row.modes[mode];
+      const v = getSortValue(row, valueKey);
+      const noModeData = mode !== 'global' && !m.distance_km;   // no ETS2/ATS data ("-")
+      const isDash = DASH_KEYS.has(valueKey) && !v;             // cell would show "-"
+      if (noModeData || isDash) {
+        ranks.set(row.id, null);
+        continue;
+      }
+      const groupId = isRegion ? (row.country_code || '') : '';
+      if (!groups.has(groupId)) groups.set(groupId, []);
+      groups.get(groupId).push({ id: row.id, v });
+    }
+    groups.forEach((arr) => {
+      arr.sort((x, y) => y.v - x.v);
+      let prevV = null;
+      let prevRank = 0;
+      arr.forEach((e, i) => {
+        const r = e.v === prevV ? prevRank : i + 1;
+        ranks.set(e.id, r);
+        prevV = e.v;
+        prevRank = r;
+      });
+    });
+    return { showOrig: true, ranks };
+  }
+
+  function rankCellHtml(row, showOrig, ranks) {
+    if (!showOrig) return String(row.rank);
+    const r = ranks.get(row.id);
+    const main = r == null
+      ? '<span class="rank-main rank-na">N/A</span>'
+      : `<span class="rank-main">${r}</span>`;
+    return `${main}<span class="rank-orig" title="Original rank (Global Total Distance)">#${row.rank}</span>`;
+  }
+
   function canRefreshNow(row) {
     return Date.now() - row.last_updated >= refreshCooldownMs;
   }
@@ -286,12 +350,14 @@
       return;
     }
 
+    const { showOrig, ranks } = computeDisplayRanks();
+
     boardBody.innerHTML = rows.map((row) => {
       const m = row.modes[mode];
       const refreshable = canRefreshNow(row);
       return `
         <tr data-id="${row.id}">
-          <td class="rank num">${row.rank}</td>
+          <td class="rank num">${rankCellHtml(row, showOrig, ranks)}</td>
           <td class="flag region-col">${flagImg(row)}</td>
           <td class="name"><a href="https://www.worldoftrucks.com/en/profile/${row.id}" target="_blank" rel="noopener">${escapeHtml(row.name)}</a></td>
           <td class="num">${fmtDistance(m.distance_km)}</td>

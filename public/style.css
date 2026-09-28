@@ -237,3 +237,24 @@ th.num.sort-desc::after {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* Displayed rank (main) + original Global rank (small) */
+td.rank .rank-main {
+  display: inline-block;
+  min-width: 3ch;
+  text-align: right;
+}
+td.rank .rank-main.rank-na {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+td.rank .rank-orig {
+  display: inline-block;
+  min-width: 5ch;
+  margin-left: 6px;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--text-dim);
+}
