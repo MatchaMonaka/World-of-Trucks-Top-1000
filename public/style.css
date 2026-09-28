@@ -277,3 +277,17 @@ footer .sort-notes {
   font-size: 0.7rem;
   line-height: 1.6;
 }
+
+/* Multi-sort: reset button (top-left of the table) + priority numbers */
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 24px -8px;
+}
+.sort-summary {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+th.sort-asc[data-order]::after { content: " ▲" attr(data-order); }
+th.sort-desc[data-order]::after { content: " ▼" attr(data-order); }

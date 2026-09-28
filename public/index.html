@@ -56,6 +56,11 @@
 
 <div id="paginationTop" class="pagination"></div>
 
+<div class="table-toolbar">
+  <button id="resetSortBtn" title="Reset to Total Distance sort only" disabled>↺ Reset Sort</button>
+  <span id="sortSummary" class="sort-summary"></span>
+</div>
+
 <div class="table-wrap">
 <table id="board">
   <thead>
@@ -93,6 +98,7 @@
     <li>Name / Last Updated / Avg Speed / Speed vs Median: # is the Total Distance rank of the selected mode.</li>
     <li>Region: shown as "rank / players in that region", ranked by Total Distance within the region.</li>
     <li>Avg Speed / Speed vs Median: these two headers are linked. Both sort by the absolute difference from the median Avg Speed (players with data in the selected mode), ascending (closest to the median first) by default. Hover over a Speed vs Median value to see the median.</li>
+    <li>Multi-sort: clicking a column adds it as the next sort key (the small number in the header shows the priority); clicking it again toggles ascending / descending. Region groups the table, so each region is ranked by the other selected column(s). Use "Reset Sort" to go back to Total Distance only.</li>
     <li>Players with no data for the selected mode / column are shown as N/A and always listed below the lowest rank, regardless of sort direction. Ranks are calculated over all registered players, not just search results.</li>
   </ul>
 </footer>

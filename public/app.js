@@ -16,8 +16,9 @@
   let players = [];          // raw data from /api/leaderboard (fixed global-distance order + rank)
   let mode = 'global';       // global | euro | american
   let unit = 'km';           // km | mi
-  let sortKey = 'distance';
-  let sortDir = 'desc';
+  // Multi-key sort: earlier entries have higher priority.
+  const DEFAULT_SORT = () => [{ key: 'distance', dir: 'desc' }];
+  let sortKeys = DEFAULT_SORT();
   let pageSize = 100;        // one of allowedPageSizes
 
   // Server-provided settings (overwritten by data.config from /api/leaderboard).
@@ -223,33 +224,57 @@
     }
   }
 
+  function isDefaultSort() {
+    return sortKeys.length === 1 && sortKeys[0].key === 'distance' && sortKeys[0].dir === 'desc';
+  }
+
+  // Region acts as a "group by": when it is in the sort list it is always applied
+  // first, so every region forms a block and the other keys sort inside each block.
+  function effectiveSortKeys() {
+    const ci = sortKeys.findIndex((s) => s.key === 'country');
+    if (ci <= 0) return sortKeys;
+    return [sortKeys[ci], ...sortKeys.filter((_, i) => i !== ci)];
+  }
+
+  // Returns 0 when equal; null values (no data) always go last regardless of direction.
+  function compareByKey(a, b, { key, dir }) {
+    const va = getSortValue(a, key);
+    const vb = getSortValue(b, key);
+    if (va === null || vb === null) {
+      if (va === vb) return 0;
+      return va === null ? 1 : -1;
+    }
+    const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+    return dir === 'asc' ? cmp : -cmp;
+  }
+
   function sortedPlayers() {
     updateSpeedMedian();
     const copy = [...players];
     const vKey = rankValueKey();
+    const keys = effectiveSortKeys();
+    const hasRegion = keys[0].key === 'country';
+    const restKeys = hasRegion ? keys.slice(1) : keys;
     copy.sort((a, b) => {
-      // Rows that would show "N/A" always go below the lowest rank, in both directions.
+      // 1) region grouping (if any)
+      if (hasRegion) {
+        const c = compareByKey(a, b, keys[0]);
+        if (c !== 0) return c;
+      }
+      // 2) rows that would show "N/A" go below the lowest rank (inside their region)
       const naA = isNaRow(a, vKey);
       const naB = isNaRow(b, vKey);
       if (naA || naB) {
         if (naA === naB) return 0;
         return naA ? 1 : -1;
       }
-      const va = getSortValue(a, sortKey);
-      const vb = getSortValue(b, sortKey);
-      if (va === null || vb === null) {
-        if (va === vb) return 0;
-        return va === null ? 1 : -1;   // no-data rows go last regardless of direction
+      // 3) remaining keys in priority order
+      for (const k of restKeys) {
+        const c = compareByKey(a, b, k);
+        if (c !== 0) return c;
       }
-      let cmp;
-      if (typeof va === 'string') cmp = va.localeCompare(vb);
-      else cmp = va - vb;
-      // Region sort: inside each region, order by the current mode's Total Distance (desc),
-      // independent of the asc/desc direction of the region column itself.
-      if (cmp === 0 && sortKey === 'country') {
-        return b.modes[mode].distance_km - a.modes[mode].distance_km;
-      }
-      return sortDir === 'asc' ? cmp : -cmp;
+      // 4) final tie-break: Total Distance (desc) of the current mode
+      return b.modes[mode].distance_km - a.modes[mode].distance_km;
     });
     return copy;
   }
@@ -331,8 +356,10 @@
   };
 
   // The column whose values the displayed rank is based on.
+  // The first sort key (in click order) that can be ranked; Region only groups.
   function rankValueKey() {
-    return (sortKey === 'country' || NON_RANKABLE_KEYS.has(sortKey)) ? 'distance' : sortKey;
+    const k = sortKeys.find((s) => s.key !== 'country' && !NON_RANKABLE_KEYS.has(s.key));
+    return k ? k.key : 'distance';
   }
 
   // True when the row's rank is "N/A" for the given value key in the current mode.
@@ -352,7 +379,7 @@
    * 1 = highest value, ties share the same rank.
    */
   function computeDisplayRanks() {
-    const isRegion = sortKey === 'country';
+    const isRegion = sortKeys.some((s) => s.key === 'country');
     const valueKey = rankValueKey();
     const showOrig = !(mode === 'global' && valueKey === 'distance' && !isRegion);
     if (!showOrig) return { showOrig: false, ranks: null, sizes: null };
@@ -458,30 +485,59 @@
     }[c]));
   }
 
+  function headerLabel(key) {
+    const th = document.querySelector(`th.sortable[data-key="${key}"]`);
+    return th ? th.textContent.trim() : key;
+  }
+
   function updateSortHeaders() {
     document.querySelectorAll('th.sortable').forEach((th) => {
       th.classList.remove('sort-asc', 'sort-desc');
+      th.removeAttribute('data-order');
       const key = th.dataset.key === 'avgSpeedDiff' ? 'avgSpeed' : th.dataset.key;
-      if (key === sortKey) {
-        th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      const idx = sortKeys.findIndex((s) => s.key === key);
+      if (idx >= 0) {
+        th.classList.add(sortKeys[idx].dir === 'asc' ? 'sort-asc' : 'sort-desc');
+        if (sortKeys.length > 1) th.setAttribute('data-order', String(idx + 1));
       }
     });
+
+    const resetBtn = document.getElementById('resetSortBtn');
+    if (resetBtn) resetBtn.disabled = isDefaultSort();
+    const summary = document.getElementById('sortSummary');
+    if (summary) {
+      summary.textContent = 'Sort: ' + sortKeys
+        .map((s) => `${headerLabel(s.key)} ${s.dir === 'asc' ? '▲' : '▼'}`)
+        .join(' → ');
+    }
   }
 
   // ---- events ----
+  // Click: toggle direction if the column is already a sort key,
+  // otherwise append it as the next (lower-priority) key.
+  // Exception: from the pristine default sort (Total Distance only) the first click replaces it.
   document.querySelectorAll('th.sortable').forEach((th) => {
     th.addEventListener('click', () => {
       // The "Speed vs Median" header is linked to "Avg Speed": both use the same sort key.
       const key = th.dataset.key === 'avgSpeedDiff' ? 'avgSpeed' : th.dataset.key;
-      if (sortKey === key) {
-        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      const idx = sortKeys.findIndex((s) => s.key === key);
+      const firstDir = (key === 'rank' || key === 'avgSpeed') ? 'asc' : 'desc';
+      if (idx >= 0) {
+        sortKeys[idx].dir = sortKeys[idx].dir === 'asc' ? 'desc' : 'asc';
+      } else if (isDefaultSort()) {
+        sortKeys = [{ key, dir: firstDir }];
       } else {
-        sortKey = key;
-        sortDir = (key === 'rank' || key === 'avgSpeed') ? 'asc' : 'desc';
+        sortKeys.push({ key, dir: firstDir });
       }
       currentPage = 0;
       render();
     });
+  });
+
+  document.getElementById('resetSortBtn').addEventListener('click', () => {
+    sortKeys = DEFAULT_SORT();
+    currentPage = 0;
+    render();
   });
 
   document.querySelectorAll('.mode-btn').forEach((btn) => {
