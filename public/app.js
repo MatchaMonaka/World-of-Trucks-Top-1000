@@ -1,8 +1,6 @@
 (() => {
   const KM_PER_MILE = 1.609344;
-  const REFRESH_COOLDOWN_MS = 8 * 60 * 60 * 1000;
   const COOKIE_MAX_AGE_DAYS = 365;
-  const ALLOWED_PAGE_SIZES = [100, 200, 250, 500, 1000];
 
   function setCookie(name, value) {
     const maxAge = COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
@@ -20,7 +18,14 @@
   let unit = 'km';           // km | mi
   let sortKey = 'distance';
   let sortDir = 'desc';
-  let pageSize = 100;        // 100 | 200 | 250 | 500 | 1000
+  let pageSize = 100;        // one of allowedPageSizes
+
+  // Server-provided settings (overwritten by data.config from /api/leaderboard).
+  // The values below are only fallbacks used until the first response arrives.
+  let refreshCooldownMs = 8 * 60 * 60 * 1000;
+  let newPlayerCooldownMs = 60 * 1000;
+  let maxDisplay = 1000;
+  let allowedPageSizes = [100, 200, 250, 500, 1000];
   let searchQuery = '';      // matches against player name / country name / country code
   let currentPage = 0;       // 0-indexed
 
@@ -29,7 +34,7 @@
   if (savedUnit === 'km' || savedUnit === 'mi') unit = savedUnit;
 
   const savedPageSize = Number(getCookie('wot_pageSize'));
-  if (ALLOWED_PAGE_SIZES.includes(savedPageSize)) pageSize = savedPageSize;
+  if (allowedPageSizes.includes(savedPageSize)) pageSize = savedPageSize;
 
 
   const boardBody = document.getElementById('boardBody');
@@ -99,12 +104,66 @@
     return `<img src="${src}" alt="${title}" title="${title}" onerror="this.style.display='none'">`;
   }
 
+  function updatePlayerCountBadge() {
+    const badge = document.getElementById('playerCountBadge');
+    if (!badge) return;
+    const count = players.length;
+    badge.textContent = `${fmtInt(count)} ${count === 1 ? 'Player' : 'Players'}`;
+  }
+
+  function fmtDuration(ms) {
+    const round = (n) => Math.round(n * 10) / 10;
+    const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+    if (ms >= 3600000) return plural(round(ms / 3600000), 'hour');
+    if (ms >= 60000) return plural(round(ms / 60000), 'minute');
+    return plural(round(ms / 1000), 'second');
+  }
+
+  function fmtRemaining(ms) {
+    if (ms >= 3600000) return `${Math.ceil(ms / 3600000)}h`;
+    if (ms >= 60000) return `${Math.ceil(ms / 60000)}m`;
+    return `${Math.max(1, Math.ceil(ms / 1000))}s`;
+  }
+
+  function renderPageSizeButtons() {
+    const el = document.getElementById('pageSizeButtons');
+    if (!el) return;
+    el.innerHTML = allowedPageSizes.map((size) =>
+      `<button class="pagesize-btn ${size === pageSize ? 'active' : ''}" data-size="${size}">${size}</button>`
+    ).join('');
+  }
+
+  function renderLimitsNote() {
+    const el = document.getElementById('limitsNote');
+    if (!el) return;
+    el.textContent =
+      `To reduce server load, updating an existing player profile is limited to once every ${fmtDuration(refreshCooldownMs)}, ` +
+      `and registering a new player is limited to once every ${fmtDuration(newPlayerCooldownMs)}.`;
+  }
+
+  function applyConfig(cfg) {
+    if (!cfg) return;
+    if (Number.isFinite(cfg.refresh_cooldown_ms)) refreshCooldownMs = cfg.refresh_cooldown_ms;
+    if (Number.isFinite(cfg.new_player_cooldown_ms)) newPlayerCooldownMs = cfg.new_player_cooldown_ms;
+    if (Number.isFinite(cfg.max_display)) maxDisplay = cfg.max_display;
+    if (Array.isArray(cfg.page_size_options)) {
+      const sizes = cfg.page_size_options.map(Number).filter((n) => n > 0);
+      if (sizes.length) allowedPageSizes = sizes;
+    }
+    if (allowedPageSizes.includes(savedPageSize)) pageSize = savedPageSize;
+    else if (!allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
+    renderPageSizeButtons();
+    renderLimitsNote();
+  }
+
   async function loadLeaderboard() {
     boardBody.innerHTML = `<tr><td colspan="13" class="loading">Loading...</td></tr>`;
     try {
       const res = await fetch('/api/leaderboard');
       const data = await res.json();
       players = data.players || [];
+      applyConfig(data.config);
+      updatePlayerCountBadge();
       currentPage = 0;
       render();
       hideStatus();
@@ -208,13 +267,12 @@
   }
 
   function canRefreshNow(row) {
-    return Date.now() - row.last_updated >= REFRESH_COOLDOWN_MS;
+    return Date.now() - row.last_updated >= refreshCooldownMs;
   }
 
   function nextRefreshLabel(row) {
-    const remain = REFRESH_COOLDOWN_MS - (Date.now() - row.last_updated);
-    const hrs = Math.ceil(remain / 3600000);
-    return `In ~${hrs}h`;
+    const remain = refreshCooldownMs - (Date.now() - row.last_updated);
+    return `In ~${fmtRemaining(remain)}`;
   }
 
   function render() {
@@ -305,15 +363,14 @@
     });
   });
 
-  document.querySelectorAll('.pagesize-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.pagesize-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      pageSize = Number(btn.dataset.size) || 100;
-      currentPage = 0;
-      setCookie('wot_pageSize', pageSize);
-      render();
-    });
+  document.getElementById('pageSizeButtons').addEventListener('click', (e) => {
+    const btn = e.target.closest('.pagesize-btn');
+    if (!btn) return;
+    pageSize = Number(btn.dataset.size) || allowedPageSizes[0];
+    currentPage = 0;
+    setCookie('wot_pageSize', pageSize);
+    renderPageSizeButtons();
+    render();
   });
 
   document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -370,7 +427,7 @@
         input.value = '';
         await loadLeaderboard();
       } else {
-        showStatus(`Registered ${data.name}. They will appear on the leaderboard if ranked in the top 1,000.`, 'success');
+        showStatus(`Registered ${data.name}. They will appear on the leaderboard if ranked in the top ${fmtInt(maxDisplay)}.`, 'success');
         input.value = '';
         await loadLeaderboard();
       }
@@ -413,9 +470,8 @@
   document.querySelectorAll('.unit-btn').forEach((b) => {
     b.classList.toggle('active', b.dataset.unit === unit);
   });
-  document.querySelectorAll('.pagesize-btn').forEach((b) => {
-    b.classList.toggle('active', Number(b.dataset.size) === pageSize);
-  });
+  renderPageSizeButtons();
+  renderLimitsNote();
 
   loadLeaderboard();
 })();

@@ -15,15 +15,60 @@ const { warmFlag } = require('./flags');
 
 const router = express.Router();
 
-const PLAYER_REFRESH_COOLDOWN_MS = 8 * 60 * 60 * 1000; // 8 hours
-const NEW_PLAYER_COOLDOWN_MS = 0.01 * 60 * 1000; // 1 minutes
+// ---- 設定(環境変数で変更可能。未設定ならデフォルト値) ----
+function envNumber(name, fallback, min) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= min ? n : fallback;
+}
+
+function envNumberList(name, fallback) {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const list = raw
+    .split(',')
+    .map((v) => Math.floor(Number(v.trim())))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return list.length ? [...new Set(list)].sort((a, b) => a - b) : fallback;
+}
+
+// 既存プレイヤーの更新間隔(時間)  例: PLAYER_REFRESH_COOLDOWN_HOURS=8
+const PLAYER_REFRESH_COOLDOWN_MS = envNumber('PLAYER_REFRESH_COOLDOWN_HOURS', 8, 0) * 60 * 60 * 1000;
+// 新規プレイヤー登録の間隔(秒)  例: NEW_PLAYER_COOLDOWN_SECONDS=60
+const NEW_PLAYER_COOLDOWN_MS = envNumber('NEW_PLAYER_COOLDOWN_SECONDS', 60, 0) * 1000;
+// リーダーボードに表示する最大人数  例: MAX_LEADERBOARD_SIZE=1000
+const MAX_LEADERBOARD_SIZE = Math.floor(envNumber('MAX_LEADERBOARD_SIZE', 1000, 1));
+// DBに保存する最大人数(順位外はこの人数を超えると削除)。表示人数以上、既定は表示人数+100
+//   例: MAX_STORED_PLAYERS=1100
+const MAX_STORED_PLAYERS = Math.max(
+  MAX_LEADERBOARD_SIZE,
+  Math.floor(envNumber('MAX_STORED_PLAYERS', MAX_LEADERBOARD_SIZE + 100, 1))
+);
+// 1ページの表示件数の選択肢  例: PAGE_SIZE_OPTIONS=100,200,250,500,1000
+const PAGE_SIZE_OPTIONS = envNumberList('PAGE_SIZE_OPTIONS', [100, 200, 250, 500, 1000]);
+
 const NEW_PLAYER_META_KEY = 'last_new_player_added_at';
-const MAX_LEADERBOARD_SIZE = 1000;
 const MAX_VALID_ID = 999_999_999_999;
 
-// Players ranking below this (by Global distance) are not worth storing:
-// keeps the table small even if people spam low-rank profile IDs.
-const MAX_STORED_PLAYERS = 1100;
+function formatDuration(ms) {
+  const round = (n) => Math.round(n * 10) / 10;
+  const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+  if (ms >= 3600000) return plural(round(ms / 3600000), 'hour');
+  if (ms >= 60000) return plural(round(ms / 60000), 'minute');
+  return plural(round(ms / 1000), 'second');
+}
+
+// フロントエンドに公開する設定値
+function getPublicConfig() {
+  return {
+    max_display: MAX_LEADERBOARD_SIZE,
+    max_stored: MAX_STORED_PLAYERS,
+    refresh_cooldown_ms: PLAYER_REFRESH_COOLDOWN_MS,
+    new_player_cooldown_ms: NEW_PLAYER_COOLDOWN_MS,
+    page_size_options: PAGE_SIZE_OPTIONS,
+  };
+}
 
 function isValidId(id) {
   return Number.isInteger(id) && id > 0 && id <= MAX_VALID_ID;
@@ -80,7 +125,7 @@ router.get('/leaderboard', async (req, res) => {
   try {
     const rows = await getLeaderboard(MAX_LEADERBOARD_SIZE);
     const data = rows.map((row, i) => toRankedRow(row, i + 1));
-    res.json({ count: data.length, players: data });
+    res.json({ count: data.length, players: data, config: getPublicConfig() });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch leaderboard.' });
@@ -124,7 +169,7 @@ router.post('/players', async (req, res) => {
     if (elapsed < NEW_PLAYER_COOLDOWN_MS) {
       const waitMs = NEW_PLAYER_COOLDOWN_MS - elapsed;
       return res.status(429).json({
-        error: 'New-player registration is limited to once every minute (site-friendliness limit). Please try again shortly.',
+        error: `New-player registration is limited to once every ${formatDuration(NEW_PLAYER_COOLDOWN_MS)} (site-friendliness limit). Please try again shortly.`,
         retry_after_ms: waitMs,
       });
     }
@@ -196,10 +241,9 @@ async function refreshPlayer(res, id, existing, { viaRegister = false } = {}) {
   const elapsed = now - Number(existing.last_updated);
   if (elapsed < PLAYER_REFRESH_COOLDOWN_MS) {
     const waitMs = PLAYER_REFRESH_COOLDOWN_MS - elapsed;
-    const waitHrs = Math.ceil(waitMs / 3600000);
     const prefix = viaRegister ? 'This player is already registered and ' : 'This player ';
     return res.status(429).json({
-      error: `${prefix}was updated recently. Each player can only be refreshed once every 8 hours (available in ~${waitHrs}h).`,
+      error: `${prefix}was updated recently. Each player can only be refreshed once every ${formatDuration(PLAYER_REFRESH_COOLDOWN_MS)} (available in ~${formatDuration(waitMs)}).`,
       retry_after_ms: waitMs,
       next_allowed_at: Number(existing.last_updated) + PLAYER_REFRESH_COOLDOWN_MS,
     });

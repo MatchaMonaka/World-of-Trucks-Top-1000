@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>World of Trucks Leaderboard - Top 1000</title>
+<title>World of Trucks Leaderboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11,8 +11,8 @@
 </head>
 <body>
 <header class="topbar">
-  <h1>🚚 World of Trucks Leaderboard <span class="badge">Top 1000</span></h1>
-  <p class="sub">Top 1,000 truckers by <strong>Global Total Distance</strong></p>
+  <h1>🚚 World of Trucks Leaderboard <span class="badge" id="playerCountBadge">- Players</span></h1>
+  <p class="sub">Registered truckers ranked by <strong>Global Total Distance</strong></p>
 </header>
 
 <section class="controls">
@@ -48,11 +48,7 @@
 
   <div class="control-group" role="group" aria-label="page size switch">
     <span class="control-label">Show:</span>
-    <button class="pagesize-btn active" data-size="100">100</button>
-    <button class="pagesize-btn" data-size="200">200</button>
-    <button class="pagesize-btn" data-size="250">250</button>
-    <button class="pagesize-btn" data-size="500">500</button>
-    <button class="pagesize-btn" data-size="1000">1000</button>
+    <span id="pageSizeButtons" style="display: contents;"></span>
   </div>
 </section>
 
@@ -89,7 +85,7 @@
 
 <footer>
   <p>Data Source: <a href="https://www.worldoftrucks.com/" target="_blank" rel="noopener">World of Trucks</a> (SCS Software). This site is an unofficial fan-made tool created with Claude and Gemini</p>
-  <p>To reduce server load, updating an existing player profile is limited to once every 8 hours, and registering a new player is limited to once every minute.</p>
+  <p id="limitsNote"></p>
 </footer>
 
 <script src="app.js"></script>
