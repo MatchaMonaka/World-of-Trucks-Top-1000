@@ -26,7 +26,7 @@
   let refreshCooldownMs = 8 * 60 * 60 * 1000;
   let newPlayerCooldownMs = 60 * 1000;
   let maxDisplay = 1000;
-  let allowedPageSizes = [100, 200, 250, 500, 1000];
+  let allowedPageSizes = [50, 100, 200, 250, 500, 1000];
   let searchQuery = '';      // matches against player name / country name / country code
   let currentPage = 0;       // 0-indexed
 
