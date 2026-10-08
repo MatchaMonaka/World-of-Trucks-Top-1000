@@ -43,8 +43,6 @@ async function getPlayer(id) {
 
 async function upsertPlayer(parsed) {
   const now = Date.now();
-  const existing = await getPlayer(parsed.id);
-  const createdAt = existing ? existing.created_at : now;
 
   const query = `
     INSERT INTO players (
@@ -52,13 +50,13 @@ async function upsertPlayer(parsed) {
       global_distance_km, global_jobs, global_mass_t, global_time_min, global_avg_distance_km, global_avg_speed_kmh, global_difficult_p, global_easy_p,
       euro_distance_km, euro_jobs, euro_mass_t, euro_time_min, euro_avg_distance_km, euro_avg_speed_kmh, euro_difficult_p, euro_easy_p,
       american_distance_km, american_jobs, american_mass_t, american_time_min, american_avg_distance_km, american_avg_speed_kmh, american_difficult_p, american_easy_p,
-      created_at, last_updated
+      last_updated
     ) VALUES (
       $1, $2, $3, $4,
       $5, $6, $7, $8, $9, $10, $11, $12,
       $13, $14, $15, $16, $17, $18, $19, $20,
       $21, $22, $23, $24, $25, $26, $27, $28,
-      $29, $30
+      $29
     )
     ON CONFLICT (id) DO UPDATE SET
       name = EXCLUDED.name,
@@ -120,7 +118,6 @@ async function upsertPlayer(parsed) {
     parsed.american.avg_speed_kmh,
     parsed.american.difficult_p,
     parsed.american.easy_p,
-    createdAt,
     now,
   ];
 
