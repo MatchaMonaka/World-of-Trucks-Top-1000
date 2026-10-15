@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://wotr-leaderboard.matchacraft.net/sitemap.xml
